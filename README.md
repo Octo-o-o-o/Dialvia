@@ -5,7 +5,7 @@
 
 Turn a USB handset into a small Codex control surface: dial a number to open a chat, start voice dictation, and receive a task notification. **Plantronics Calisto P240 is the first and currently the only implemented device adapter.**
 
-> **0.1.0-alpha.2** — direct Codex sidebar navigation, one green press per step, direction controls and reliable numeric exit. 59 core assertions pass. The user confirmed native switching; the new repeated-green interaction still needs device acceptance. Idle red-key exit is unreliable. See [validation](docs/validation.md).
+> **0.1.0-alpha.2** — direct Codex sidebar navigation, one green press per step, direction controls and reliable numeric exit. 59 core assertions pass. The user confirmed native switching and smooth repeated-green navigation on P240. Idle red-key exit is unreliable. See [validation](docs/validation.md).
 
 ![Dialvia control center with fictional demo projects](assets/screenshots/projects.png)
 
