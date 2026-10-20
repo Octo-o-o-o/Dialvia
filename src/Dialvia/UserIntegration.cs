@@ -22,6 +22,30 @@ namespace Dialvia {
             return result;
         }
         static string Text(Dictionary<string, object> item, string key) { object value; return item.TryGetValue(key, out value) ? Convert.ToString(value) : null; }
+        public static string SidebarShortcut(string codexHome, bool next) {
+            string command = next ? "nextThread" : "previousThread", fallback = next ? "Ctrl+Alt+]" : "Ctrl+Alt+[";
+            string path = Path.Combine(codexHome, "keybindings.json");
+            var rows = File.Exists(path) ? Rows(SettingsStore.Json.DeserializeObject(File.ReadAllText(path))) : new List<Dictionary<string, object>>();
+            var configured = rows.Where(x => Text(x, "command") == command).ToList();
+            if (configured.Count > 0) {
+                foreach (var row in configured) {
+                    string chord = Text(row, "key");
+                    if (String.IsNullOrWhiteSpace(chord)) continue;
+                    try { ShortcutKeys.Parse(chord); } catch (ArgumentException) { continue; }
+                    if (rows.Any(x => Text(x, "command") != command && SameShortcut(Text(x, "key"), chord)))
+                        throw new InvalidOperationException("Codex 会话切换键同时绑定了其他命令，请先解决冲突：" + chord);
+                    return chord;
+                }
+                throw new InvalidOperationException("Codex 的 " + command + " 已禁用或使用不兼容快捷键；请为它设置修饰键＋F键或左右方向键。");
+            }
+            if (rows.Any(x => SameShortcut(Text(x, "key"), fallback)))
+                throw new InvalidOperationException("Codex 的默认会话切换键已被其他命令占用：" + fallback);
+            return fallback;
+        }
+        static bool SameShortcut(string first, string second) {
+            try { return ShortcutKeys.Parse(first).OrderBy(x => x).SequenceEqual(ShortcutKeys.Parse(second).OrderBy(x => x)); }
+            catch (ArgumentException) { return false; }
+        }
         public static void InstallBindings(string codexHome, string data, Settings settings) {
             SettingsStore.Validate(settings);
             string path = Path.Combine(codexHome, "keybindings.json"), manifest = Path.Combine(data, "bindings-owned.json");

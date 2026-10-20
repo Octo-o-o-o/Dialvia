@@ -16,7 +16,10 @@ namespace Dialvia {
         SessionSnapshot recentSnapshot;
         string activeProjectPath = "";
         Timer reconnect, talkDelay, inboxTimer, ringTimer;
-        bool voiceActive, closing;
+        bool voiceActive, closing, nativeBrowsing;
+        int nativeDirection = 1;
+        readonly DeferredGreenPresses pendingGreen = new DeferredGreenPresses();
+        bool Browsing { get { return nativeBrowsing || (browser != null && !browser.IsDisposed); } }
         string deviceStatus = "等待 P240", lastAction = "";
         DateTime lastActionTime = DateTime.MinValue;
         public ControllerForm(ICodexDesktop desktop) {
@@ -31,7 +34,9 @@ namespace Dialvia {
             var menu = new ContextMenuStrip { BackColor = DesktopTheme.Surface, ForeColor = DesktopTheme.Ink, Font = DesktopTheme.Ui };
             var state = menu.Items.Add(deviceStatus); state.Enabled = false;
             menu.Items.Add("打开控制中心", null, delegate { ShowSettings(0); });
-            menu.Items.Add("浏览最近会话", null, delegate { ShowBrowser(activeProjectPath, 0); });
+            menu.Items.Add("进入会话切换", null, delegate { BeginBrowsing(0); });
+            menu.Items.Add("退出会话切换", null, delegate { FinishBrowsing(); });
+            menu.Items.Add("本机最近会话列表", null, delegate { ShowBrowser(activeProjectPath, 0); });
             menu.Items.Add("会话与项目", null, delegate { ShowSettings(1); });
             menu.Items.Add("语音与通知", null, delegate { ShowSettings(2); });
             menu.Items.Add(new ToolStripSeparator());
@@ -45,14 +50,17 @@ namespace Dialvia {
             menu.Opening += delegate { state.Text = deviceStatus; startup.Checked = Installer.AutoStartEnabled; detection.Checked = settings.dryRun; };
             tray.ContextMenuStrip = menu;
             tray.MouseClick += delegate(object sender, MouseEventArgs click) { if (click.Button == MouseButtons.Left) ShowSettings(0); };
-            talkDelay = new Timer { Interval = 250 };
-            talkDelay.Tick += delegate { talkDelay.Stop(); if (browser != null && !browser.IsDisposed) browser.Confirm(); else if (voiceActive) EndVoice(); else StartVoice(); };
+            talkDelay = new Timer { Interval = 40 };
+            talkDelay.Tick += delegate {
+                if (pendingGreen.TakeReady(DateTime.UtcNow)) { if (Browsing) ConfirmBrowsing(); else if (voiceActive) EndVoice(); else StartVoice(); }
+                if (pendingGreen.Count == 0) talkDelay.Stop();
+            };
             ringTimer = new Timer { Interval = 1200 }; ringTimer.Tick += delegate { ringTimer.Stop(); DeviceAction(delegate { adapter.Ring(false); }); };
             adapter = new PlantronicsP240Adapter(this, true);
             adapter.DialRequested += Dispatch;
             adapter.StatusChanged += delegate(string status) { deviceStatus = status; string tip = "Dialvia · " + status; tray.Text = tip.Length > 63 ? tip.Substring(0, 63) : tip; };
             adapter.ButtonPressed += delegate(DeviceButton button) {
-                if (button == DeviceButton.ToggleVoice) { talkDelay.Stop(); talkDelay.Start(); }
+                if (button == DeviceButton.ToggleVoice) { pendingGreen.Press(DateTime.UtcNow); talkDelay.Start(); }
                 else if (button == DeviceButton.StartVoice) StartVoice(); else EndVoice();
             };
             reconnect = new Timer { Interval = 5000 };
@@ -79,19 +87,20 @@ namespace Dialvia {
             lastAction = action; lastActionTime = now; return true;
         }
         void Dispatch(string code) {
-            talkDelay.Stop(); code = (code ?? "").Trim(); string kind = DialCode.Kind(code);
+            CancelPendingGreen(); code = (code ?? "").Trim(); string kind = DialCode.Kind(code, Browsing);
             AppPaths.Log("DIAL " + code + " " + kind);
             if (kind == "browse" || kind == "previous" || kind == "next") {
-                ShowBrowser(activeProjectPath, kind == "previous" ? -1 : kind == "next" ? 1 : 0);
+                BeginBrowsing(kind == "previous" ? -1 : kind == "next" ? 1 : 0);
                 DeviceAction(delegate { adapter.ClearDialDisplay(); }); return;
             }
+            if (kind == "finish") { FinishBrowsing(); DeviceAction(delegate { adapter.ClearDialDisplay(); }); return; }
             if (kind == "start") {
-                if (code == "0") { if (browser != null && !browser.IsDisposed) browser.Close(); StartVoice(); }
-                else if (browser != null && !browser.IsDisposed) browser.Confirm(); else StartVoice(); return;
+                if (code == "0") StartVoice();
+                else if (Browsing) ConfirmBrowsing(); else StartVoice(); return;
             }
             if (kind == "end") { EndVoice(); return; }
             if (kind == "mute") { SendShortcut("mute"); return; }
-            if (kind == "unknown") { Hint("会话：1–9；项目：*1–*9；浏览：*#。输入后按绿色键。"); return; }
+            if (kind == "unknown") { Hint("22 进入会话切换；2 上／8 下／5 退出；项目 *1–*9。输入后按绿色键。"); return; }
             Target target; string slot = code.Substring(code.Length - 1);
             if (kind == "session" && settings.sessionRouting == "recent") {
                 try {
@@ -112,13 +121,16 @@ namespace Dialvia {
         }
         void OpenTarget(Target target) {
             if (!Once(target.url)) return;
+            FinishBrowsing(false);
             if (settings.dryRun) { Hint("检测成功：" + target.label); return; }
             if (voiceActive && !EndVoice()) return;
             try { codex.OpenThread(target.url); Hint("进入：" + target.label); DeviceAction(delegate { adapter.ClearDialDisplay(); }); }
             catch (Exception ex) { Hint("切换失败：" + ex.Message); }
         }
         void ShowBrowser(string project, int movement) {
+            CancelPendingGreen();
             if (voiceActive && !EndVoice()) return;
+            nativeBrowsing = false;
             try {
                 if (browser == null || browser.IsDisposed) {
                     browser = new SessionBrowserWindow(project, delegate { return CodexInventory.Load(AppPaths.CodexHome); }, delegate(RecentThread thread) { OpenTarget(new Target { label = thread.Title, url = thread.Url, projectPath = thread.ProjectPath }); });
@@ -128,6 +140,38 @@ namespace Dialvia {
                 browser.Show(); browser.Activate(); if (movement != 0) browser.MoveSelection(movement);
             } catch (Exception ex) { Hint(ex.Message); }
         }
+        void BeginBrowsing(int movement) {
+            if (settings.browseMode == "list" || (browser != null && !browser.IsDisposed)) { ShowBrowser(activeProjectPath, movement); return; }
+            if (voiceActive && !EndVoice()) return;
+            if (browser != null && !browser.IsDisposed) browser.Close();
+            try {
+                string error;
+                if (!settings.dryRun && !codex.Focus(out error)) { Hint(error); return; }
+                bool entering = !nativeBrowsing; int oldDirection = nativeDirection; nativeBrowsing = true;
+                if (entering) nativeDirection = 1;
+                if (movement != 0) nativeDirection = movement > 0 ? 1 : -1;
+                if (entering || oldDirection != nativeDirection) Hint("绿色键继续向" + (nativeDirection > 0 ? "下" : "上") + "切换；2＋绿向上，8＋绿向下，5＋绿退出。");
+                tray.Text = "Dialvia · 绿键" + (nativeDirection > 0 ? "下一条" : "上一条") + " · 2上 / 8下 / 5退出";
+                if (movement == 0) return;
+                string chord = UserIntegration.SidebarShortcut(AppPaths.CodexHome, movement > 0);
+                if (settings.dryRun) { Hint("检测成功：Codex " + (movement > 0 ? "下一条" : "上一条") + " → " + chord); return; }
+                if (!codex.Shortcut(chord, out error)) { Hint(error); return; }
+                AppPaths.Log("NATIVE_NAV " + (movement > 0 ? "nextThread" : "previousThread"));
+            } catch (Exception ex) { Hint(ex.Message); }
+        }
+        void ConfirmBrowsing() {
+            if (nativeBrowsing) { BeginBrowsing(nativeDirection); DeviceAction(delegate { adapter.ClearDialDisplay(); }); }
+            else if (browser != null && !browser.IsDisposed) browser.Confirm();
+        }
+        void CancelPendingGreen() { pendingGreen.Cancel(); if (talkDelay != null) talkDelay.Stop(); }
+        void FinishBrowsing() { FinishBrowsing(true); }
+        void FinishBrowsing(bool announce) {
+            CancelPendingGreen();
+            bool wasBrowsing = Browsing; nativeBrowsing = false;
+            if (browser != null && !browser.IsDisposed) browser.Close();
+            if (tray != null) { string tip = "Dialvia · " + deviceStatus; tray.Text = tip.Length > 63 ? tip.Substring(0, 63) : tip; }
+            if (wasBrowsing && announce) Hint("已退出会话切换，保留当前 Codex 会话。");
+        }
         bool SendShortcut(string action) {
             string chord = settings.shortcuts[action];
             if (settings.dryRun) { Hint("检测成功：" + action + " → " + chord); return true; }
@@ -135,13 +179,14 @@ namespace Dialvia {
             Hint(error); return false;
         }
         void StartVoice() {
-            talkDelay.Stop(); if (voiceActive || !Once("start")) return;
+            CancelPendingGreen(); if (voiceActive || !Once("start")) return;
+            FinishBrowsing(false);
             if (!settings.voiceEnabled) { Hint("语音控制已在设置中关闭。"); return; }
             if (!SendShortcut(settings.voiceMode == "dictation" ? "dictate" : "start") || settings.dryRun) return;
             voiceActive = true; DeviceAction(delegate { adapter.SetVoiceState(true); });
         }
         bool EndVoice() {
-            if (talkDelay != null) talkDelay.Stop(); if (browser != null && !browser.IsDisposed) { browser.Close(); return true; } if (!voiceActive) return true;
+            CancelPendingGreen(); if (Browsing) { FinishBrowsing(); return true; } if (!voiceActive) return true;
             if (!SendShortcut(settings.voiceMode == "dictation" ? "dictate" : "end")) return false;
             voiceActive = false; DeviceAction(delegate { adapter.SetVoiceState(false); }); return true;
         }
@@ -149,6 +194,7 @@ namespace Dialvia {
             if (settingsWindow == null || settingsWindow.IsDisposed) {
                 settingsWindow = new SettingsWindow(settings, delegate(Settings updated) {
                     if (voiceActive) throw new InvalidOperationException("请先停止当前语音。");
+                    FinishBrowsing(false);
                     SettingsStore.Save(AppPaths.Config, updated);
                     settings = SettingsStore.Json.Deserialize<Settings>(SettingsStore.Json.Serialize(updated));
                     activeProjectPath = settings.recentProjectPath; recentSnapshot = null; Hint("设置已保存。");

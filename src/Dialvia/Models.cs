@@ -12,6 +12,7 @@ namespace Dialvia {
         public bool dryRun = true;
         public string voiceMode = "dictation";
         public string sessionRouting = "recent";
+        public string browseMode = "codex";
         public string recentProjectPath = "";
         public bool voiceEnabled = true, balloonNotifications = true, ringNotifications = false;
         public Dictionary<string, string> shortcuts = new Dictionary<string, string> {
@@ -33,6 +34,8 @@ namespace Dialvia {
                 throw new InvalidDataException("voiceMode must be dictation or conversation.");
             if (value.sessionRouting != "recent" && value.sessionRouting != "fixed")
                 throw new InvalidDataException("sessionRouting must be recent or fixed.");
+            if (value.browseMode != "codex" && value.browseMode != "list")
+                throw new InvalidDataException("browseMode must be codex or list.");
             if (value.sessions == null || value.projects == null || value.shortcuts == null)
                 throw new InvalidDataException("Missing target or shortcut configuration.");
             foreach (var map in new[] {value.sessions, value.projects}) foreach (var item in map) {
@@ -55,16 +58,35 @@ namespace Dialvia {
     }
     public static class DialCode {
         public static string Kind(string code) {
+            return Kind(code, false);
+        }
+        public static string Kind(string code, bool browsing) {
             code = (code ?? "").Trim();
+            if (browsing) {
+                if (code == "2") return "previous";
+                if (code == "8") return "next";
+                if (code == "5") return "finish";
+            }
             if (code == "" || code == "0") return "start";
             if (code == "*0") return "end";
             if (code == "#0") return "mute";
-            if (code == "*#") return "browse";
+            if (code == "*#" || code == "22") return "browse";
+            if (code == "23") return "finish";
             if (code == "*") return "previous";
             if (code == "#") return "next";
             if (Regex.IsMatch(code, "^\\*[1-9]$") || Regex.IsMatch(code, "^1[1-9]$")) return "project";
             if (Regex.IsMatch(code, "^#?[1-9]$")) return "session";
             return "unknown";
+        }
+    }
+    public sealed class DeferredGreenPresses {
+        readonly Queue<DateTime> presses = new Queue<DateTime>();
+        public int Count { get { return presses.Count; } }
+        public void Press(DateTime at) { if (presses.Count < 32) presses.Enqueue(at); }
+        public void Cancel() { presses.Clear(); }
+        public bool TakeReady(DateTime now) {
+            if (presses.Count == 0 || (now - presses.Peek()).TotalMilliseconds < 250) return false;
+            presses.Dequeue(); return true;
         }
     }
     public static class AtomicFile {

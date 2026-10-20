@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0-alpha.2 — 2026-10-20
+
+- Default handset browsing to Codex's native previous/next sidebar commands, without opening a Dialvia window.
+- Add `22` to enter, `2` / `8` to choose direction and move, and `5` to exit; `23` exits unconditionally. Codes need green to submit; green alone repeats a step in the current direction.
+- Queue rapid green presses separately and cancel pending steps on explicit commands/exit. Use distinct SDK call IDs so stale display-clear feedback cannot terminate a later voice call.
+- Honor compatible existing sidebar bindings and reject disabled or conflicting bindings without mutation.
+- Keep the recent-session popup as an optional GUI setting. Project filtering applies to this local list only.
+- Replace the unreliable idle red-key exit instruction with numeric exit; handle additional active-call end states and log SDK state transitions.
+- Preserve direct fixed/recent slots outside browsing; do not claim unsupported long presses or central-scroll input.
+- Expand core checks to 59 assertions.
+
 ## 0.1.0-alpha.1 — 2026-10-20
 
 - Initial Windows tray app with a Plantronics Calisto P240 adapter.

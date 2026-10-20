@@ -13,18 +13,22 @@ namespace Dialvia {
                 ushort key;
                 switch (token.ToUpperInvariant()) {
                     case "CTRL": key = 0x11; break; case "ALT": key = 0x12; break; case "SHIFT": key = 0x10; break;
+                    case "LEFT": key = 0x25; if (functionKey) throw new ArgumentException("Only one action key is allowed."); functionKey = true; break;
+                    case "RIGHT": key = 0x27; if (functionKey) throw new ArgumentException("Only one action key is allowed."); functionKey = true; break;
+                    case "[": key = 0xdb; if (functionKey) throw new ArgumentException("Only one action key is allowed."); functionKey = true; break;
+                    case "]": key = 0xdd; if (functionKey) throw new ArgumentException("Only one action key is allowed."); functionKey = true; break;
                     default: int number;
                         if (!token.StartsWith("F", StringComparison.OrdinalIgnoreCase) || !Int32.TryParse(token.Substring(1), out number) || number < 1 || number > 24 || functionKey)
-                            throw new ArgumentException("Use Ctrl/Alt/Shift plus one F1–F24 key.");
+                            throw new ArgumentException("Use Ctrl/Alt/Shift plus one F1–F24, Left/Right, [ or ] key.");
                         key = (ushort)(0x6f + number); functionKey = true; break;
                 }
                 if (keys.Contains(key)) throw new ArgumentException("Duplicate shortcut key."); keys.Add(key);
             }
             if (!functionKey || keys.Count < 2) throw new ArgumentException("Shortcut requires a modifier and one function key.");
-            return keys.ToArray();
+            return keys.Where(x => x == 0x10 || x == 0x11 || x == 0x12).Concat(keys.Where(x => x != 0x10 && x != 0x11 && x != 0x12)).ToArray();
         }
     }
-    public interface ICodexDesktop { bool Shortcut(string chord, out string error); void OpenThread(string url); }
+    public interface ICodexDesktop { bool Focus(out string error); bool Shortcut(string chord, out string error); void OpenThread(string url); }
     public sealed class CodexDesktop : ICodexDesktop {
         [StructLayout(LayoutKind.Sequential)] struct Input { public uint type; public InputUnion data; }
         [StructLayout(LayoutKind.Explicit)] struct InputUnion { [FieldOffset(0)] public Keyboard keyboard; [FieldOffset(0)] public Mouse mouse; }
@@ -44,7 +48,7 @@ namespace Dialvia {
                 throw new ArgumentException("Only Codex thread links are allowed.");
             Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
         }
-        public bool Shortcut(string chord, out string error) {
+        public bool Focus(out string error) {
             error = null; Process target = null;
             foreach (Process process in Process.GetProcessesByName("ChatGPT")) {
                 try {
@@ -57,9 +61,14 @@ namespace Dialvia {
             SetForegroundWindow(target.MainWindowHandle);
             uint pid; GetWindowThreadProcessId(GetForegroundWindow(), out pid);
             if (pid != target.Id) { error = "请先点击 Codex 窗口，再按话机键。"; return false; }
+            return true;
+        }
+        public bool Shortcut(string chord, out string error) {
+            ushort[] keys = ShortcutKeys.Parse(chord);
+            if (!Focus(out error)) return false;
             foreach (int modifier in new[] {0x10, 0x11, 0x12, 0x5b, 0x5c})
                 if ((GetAsyncKeyState(modifier) & 0x8000) != 0) { error = "请松开键盘修饰键后重试。"; return false; }
-            ushort[] keys = ShortcutKeys.Parse(chord); var inputs = new List<Input>();
+            var inputs = new List<Input>();
             foreach (ushort key in keys) inputs.Add(new Input { type = 1, data = new InputUnion { keyboard = new Keyboard { vk = key } } });
             for (int i = keys.Length - 1; i >= 0; i--) inputs.Add(new Input { type = 1, data = new InputUnion { keyboard = new Keyboard { vk = keys[i], flags = 2 } } });
             if (SendInput((uint)inputs.Count, inputs.ToArray(), NativeInputSize) != inputs.Count) {

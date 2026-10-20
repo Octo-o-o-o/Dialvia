@@ -43,7 +43,7 @@ namespace Dialvia {
                 button.FlatAppearance.BorderSize = 0; button.Click += delegate { SelectPage(selected); }; navigation.Add(button); sidebar.Controls.Add(button);
             }
             sidebar.Controls.Add(new Panel { Height = 26, Width = 160 });
-            var sidebarNote = DesktopTheme.Label("P240 首发适配\nWindows x64\n0.1.0-alpha.1", 9, false, true); sidebarNote.MaximumSize = new Size(165, 0); sidebar.Controls.Add(sidebarNote);
+            var sidebarNote = DesktopTheme.Label("P240 首发适配\nWindows x64\n0.1.0-alpha.2", 9, false, true); sidebarNote.MaximumSize = new Size(165, 0); sidebar.Controls.Add(sidebarNote);
             var right = new Panel { Dock = DockStyle.Fill, Padding = new Padding(28, 24, 26, 18), BackColor = DesktopTheme.Paper };
             var header = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 92, FlowDirection = FlowDirection.TopDown, WrapContents = false }; header.Controls.Add(heading); header.Controls.Add(subtitle);
             var bottom = new Panel { Dock = DockStyle.Bottom, Height = 66, Padding = new Padding(0, 14, 0, 0) };
@@ -95,7 +95,7 @@ namespace Dialvia {
         }
         public void SelectPage(int index) {
             string[] titles = {"一切都在手边", "会话与项目", "语音与通知", "启动与集成"};
-            string[] notes = {"查看设备状态与常用入口。关闭窗口后，控制器继续留在托盘。", "项目固定编号，会话按最近活跃浏览；也可保留固定会话。", "保留你的声音设备选择，让输入与提醒各就其位。", "登录启动、快捷键与任务通知，都可在这里管理。"};
+            string[] notes = {"查看设备状态与常用入口。关闭窗口后，控制器继续留在托盘。", "项目固定编号，设备浏览可直接切换 Codex 会话。", "保留你的声音设备选择，让输入与提醒各就其位。", "登录启动、快捷键与任务通知，都可在这里管理。"};
             for (int item = 0; item < pages.Count; item++) { pages[item].Visible = item == index; navigation[item].BackColor = item == index ? DesktopTheme.Soft : DesktopTheme.Surface; navigation[item].ForeColor = item == index ? DesktopTheme.Copper : DesktopTheme.Ink; }
             heading.Text = titles[index]; subtitle.Text = notes[index]; pages[index].BringToFront(); Fit((FlowLayoutPanel)pages[index]);
             if (connectionState != null) connectionState.Text = status(); RefreshStartupState();
@@ -108,24 +108,29 @@ namespace Dialvia {
             var mode = Card(page, "控制方式", "建议先用检测模式确认编号，再启用正式控制。");
             var detection = new CheckBox { Text = "检测模式：只显示操作提示", Checked = draft.dryRun, AutoSize = true, Margin = new Padding(0, 6, 0, 14) };
             detection.CheckedChanged += delegate { draft.dryRun = detection.Checked; Changed(); }; mode.Controls.Add(detection);
-            mode.Controls.Add(DesktopTheme.Label("0＋绿键：语音输入    *编号＋绿键：固定项目\n*#＋绿键：浏览会话    浏览中绿键：确认，红键：退出", 10, false, false));
+            mode.Controls.Add(DesktopTheme.Label("0＋绿键：语音输入　*编号＋绿键：固定项目\n22＋绿键进入后，单按绿键连续切换；2 上／8 下／5 退出加绿键", 10, false, false));
             var guide = Card(page, "日常使用", "用熟悉的设备继续工作，先选目标，再开始说话。");
             guide.Controls.Add(DesktopTheme.Label("听写生成文字草稿，由你确认发送。\n设置窗口可随时收起，退出程序请使用托盘菜单。", 10, false, false));
             return page;
         }
         Control BuildBindings() {
-            var page = Page(); var routing = Card(page, "会话选择方式", "最近列表进入后保持顺序；刷新或切换项目时才重新排列。");
+            var page = Page(); var routing = Card(page, "设备浏览方式", "进入后单按绿键连续切换；2＋绿向上，8＋绿向下，5＋绿退出。");
+            var browsing = new BrandComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 620, Margin = new Padding(0, 3, 0, 10) };
+            browsing.Items.AddRange(new object[] {"Codex 原生侧栏顺序 · 直接切换，不另开窗口（推荐）", "Dialvia 本机最近列表 · 弹窗选择后确认"}); browsing.SelectedIndex = draft.browseMode == "codex" ? 0 : 1;
+            browsing.SelectedIndexChanged += delegate { draft.browseMode = browsing.SelectedIndex == 0 ? "codex" : "list"; Changed(); }; routing.Controls.Add(browsing);
+            routing.Controls.Add(DesktopTheme.Label("直接拨 1–9 时：最近活跃或固定编号；不改变 Codex 原生侧栏顺序。", 9, false, true));
             var mode = new BrandComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 620, Margin = new Padding(0, 3, 0, 10) };
             mode.Items.AddRange(new object[] {"最近活跃 · 当前项目内最近的会话（推荐）", "固定编号 · 继续使用已绑定的会话"}); mode.SelectedIndex = draft.sessionRouting == "recent" ? 0 : 1;
             mode.SelectedIndexChanged += delegate { draft.sessionRouting = mode.SelectedIndex == 0 ? "recent" : "fixed"; Changed(); }; routing.Controls.Add(mode);
             projectFilter = new BrandComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 620 }; FillProjects(projectFilter, draft.recentProjectPath);
             projectFilter.SelectedIndexChanged += delegate { draft.recentProjectPath = SelectedProject(); RefreshBindings(); Changed(); }; routing.Controls.Add(projectFilter);
+            routing.Controls.Add(DesktopTheme.Label("本机索引项目筛选只作用于 Dialvia 最近列表；原生切换沿用 Codex 的侧栏顺序。", 9, false, true));
             var map = Card(page, "编号与最近会话", "从本机 Codex 列表选择，不需要编辑 JSON。");
             map.Controls.Add(DesktopTheme.Actions(Button("项目编号", false, delegate { bindingView = "project"; RefreshBindings(); }), Button("最近会话", false, delegate { bindingView = "recent"; RefreshBindings(); }), Button("固定会话", false, delegate { bindingView = "session"; RefreshBindings(); })));
+            map.Controls.Add(DesktopTheme.Actions(Button("添加绑定", true, delegate { EditBinding(null); }), Button("编辑", false, EditSelected), Button("移除", false, RemoveSelected), Button("刷新本机会话", false, delegate { ReloadInventory(); FillProjects(projectFilter, draft.recentProjectPath); RefreshBindings(); })));
             bindings = new ListView { Height = 150, Width = 620, View = View.Details, FullRowSelect = true, MultiSelect = false, HideSelection = false, BorderStyle = BorderStyle.FixedSingle, BackColor = DesktopTheme.Surface, ForeColor = DesktopTheme.Ink };
             bindings.Columns.Add("编号", 70); bindings.Columns.Add("名称 / 会话", 315); bindings.Columns.Add("目标 / 最近活跃", 210); map.Controls.Add(bindings);
             bindings.DoubleClick += delegate { EditSelected(); };
-            map.Controls.Add(DesktopTheme.Actions(Button("添加绑定", true, delegate { EditBinding(null); }), Button("编辑", false, EditSelected), Button("移除", false, RemoveSelected), Button("刷新本机会话", false, delegate { ReloadInventory(); FillProjects(projectFilter, draft.recentProjectPath); RefreshBindings(); })));
             bindingNote = DesktopTheme.Label("", 9, false, true); map.Controls.Add(bindingNote); RefreshBindings(); return page;
         }
         void ReloadInventory() { inventory.Clear(); try { inventory.AddRange(inventoryProvider()); } catch (Exception ex) { footer.Text = ex.Message; } }

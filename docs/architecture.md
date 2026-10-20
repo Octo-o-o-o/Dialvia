@@ -10,11 +10,11 @@ P240 USB → Plantronics Hub COM → PlantronicsP240Adapter
 ```
 
 - `DeviceAdapters.cs`: device whitelist, SDK events, local call state and restoration of the previous default softphone. The P240 submits a buffered dial string after green; a 250 ms deferred talk action lets that string cancel the generic talk event.
-- `ControllerForm.cs`: routing, duplicate-event guard, voice state, graphical settings, tray and notification consumption. Target switches stop controller-owned voice first.
+- `ControllerForm.cs`: numeric browsing context, native/sidebar or optional popup navigation, voice state, settings, tray and notification consumption. Native browsing sends previous/next sidebar commands without a new window; 5 exits while browsing and 23 exits unconditionally. Target changes leave browsing and stop controller-owned voice first.
 - `SettingsWindow.cs`, `SessionBrowserWindow.cs`, `DesktopTheme.cs`: native paper/ink/copper GUI, project bindings, recent/fixed routing, audio/notification preferences and startup management. Browser order is frozen until refresh or project change.
 - `CodexInventory.cs`: schema-checked read-only local SQLite metadata lookup through Windows `winsqlite3.dll`, with a manual-link fallback. It reads at most 200 unarchived chat IDs, titles, directories and activity times; never transcripts or database writes.
 - `CodexDesktop.cs`: validates thread links, focuses the verified packaged Codex process, checks foreground ownership and modifier state, then injects configured keys. Only minimized windows are restored, preserving an already-maximized window.
-- `UserIntegration.cs`: additive shortcut and hook configuration. Shortcut collisions fail before mutation. An ownership manifest allows removal of unchanged owned bindings while retaining user edits and unrelated hooks. No hook-trust state is edited.
+- `UserIntegration.cs`: additive voice-shortcut/hook configuration and read-only native sidebar binding resolution. Disabled or conflicting sidebar bindings are rejected. Voice-shortcut collisions fail before mutation. An ownership manifest retains user edits and unrelated hooks on removal. No hook-trust state is edited.
 - `Program.cs`: single-instance startup, native hook receiver, per-user installer, diagnostics. The generated COM interface assembly is a normal adjacent dependency.
 - `Models.cs`: configuration validation, atomic writes and paths.
 

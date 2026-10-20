@@ -15,8 +15,8 @@ using Microsoft.Win32;
 [assembly: AssemblyCompany("Dialvia contributors")]
 [assembly: AssemblyProduct("Dialvia")]
 [assembly: AssemblyVersion("0.1.0.0")]
-[assembly: AssemblyFileVersion("0.1.0.0")]
-[assembly: AssemblyInformationalVersion("0.1.0-alpha.1")]
+[assembly: AssemblyFileVersion("0.1.0.2")]
+[assembly: AssemblyInformationalVersion("0.1.0-alpha.2")]
 
 namespace Dialvia {
     public static class Program {
@@ -54,7 +54,7 @@ namespace Dialvia {
                 if (args.Length != 2) throw new ArgumentException("Usage: Dialvia.exe --self-test <report.json>");
                 var settings = new Settings(); SettingsStore.Validate(settings);
                 if (CodexDesktop.NativeInputSize != 40 || DialCode.Kind("*2") != "project" || DialCode.Kind("1;calc") != "unknown") throw new Exception("Self-test failed.");
-                AtomicFile.Write(Path.GetFullPath(args[1]), "{\"passed\":true,\"inputSize\":40,\"version\":\"0.1.0-alpha.1\"}"); return 0;
+                AtomicFile.Write(Path.GetFullPath(args[1]), "{\"passed\":true,\"inputSize\":40,\"version\":\"0.1.0-alpha.2\"}"); return 0;
             }
             if (args.Length > 0 && args[0] == "--probe-device") {
                 if (args.Length != 2) throw new ArgumentException("Usage: Dialvia.exe --probe-device <report.json>");

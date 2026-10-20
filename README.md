@@ -5,7 +5,7 @@
 
 Turn a USB handset into a small Codex control surface: dial a number to open a chat, start voice dictation, and receive a task notification. **Plantronics Calisto P240 is the first and currently the only implemented device adapter.**
 
-> **0.1.0-alpha.1** — early Windows x64 release. The original P240 controller has real-device confirmation for project/chat navigation and dictation producing text. This project adds a graphical control center, recent-session browsing, startup management and 41 core assertions. New browsing codes, full conversation mode, audible ringing, and a trusted real Codex completion event still need device acceptance. See [validation](docs/validation.md).
+> **0.1.0-alpha.2** — direct Codex sidebar navigation, one green press per step, direction controls and reliable numeric exit. 59 core assertions pass. The user confirmed native switching; the new repeated-green interaction still needs device acceptance. Idle red-key exit is unreliable. See [validation](docs/validation.md).
 
 ![Dialvia control center with fictional demo projects](assets/screenshots/projects.png)
 
@@ -29,9 +29,11 @@ The P240 buffers digits locally. Enter a code, then press the green key to submi
 |---|---|
 | `1`–`9` + green | Open the corresponding recent chat in the current snapshot, or a fixed chat in fixed mode (`#1`–`#9` also work) |
 | `*1`–`*9` + green | Open a project's configured existing chat (`11`–`19` also work) |
-| `*#` + green | Open the recent-session browser |
-| `*` / `#` + green | Move to the previous / next chat in the browser |
-| Green with no digits in the browser / red | Confirm / close the browser |
+| `22` or `*#` + green | Enter native Codex sidebar navigation (default) |
+| `2` / `8` + green while browsing | Set the direction to up / down and move one sidebar item |
+| `*` / `#` + green | Previous / next; also enters browsing |
+| `5` + green while browsing; `23` + green anywhere | Leave browsing, keeping the current chat |
+| Green with no digits while browsing | Move one more item in the current direction; optional popup mode confirms its selected item |
 | `0` + green, or green with no digits outside the browser | Start the selected voice mode |
 | Red during handset-started voice, or `*0` + green | Stop that voice session |
 | `#0` + green | Toggle microphone mute in a Codex voice conversation |
@@ -40,9 +42,13 @@ The P240 buffers digits locally. Enter a code, then press the green key to submi
 
 Project bindings open existing chats; they do not create new projects or chats. Dictation produces a draft for you to review and send. Finish a recording before changing targets. The controller focuses Codex before voice shortcuts and preserves an already-maximized window.
 
-**Projects keep fixed numbers; chats default to recently active within the selected project.** The browsing snapshot stays in order until refresh or a project change, so opening a chat does not immediately change its number. The browser shows title and today/yesterday/date; keyboard Up/Down selects a chat, Left/Right selects a project, Enter opens it and Escape closes. Fixed chat numbers remain optional. Dates are display context rather than dial codes. [Design and Xiaomi remote research](docs/navigation.md).
+**Projects keep fixed numbers; handset browsing defaults to Codex's own sidebar order.** It invokes the installed client's `previousThread` / `nextThread` commands and respects supported custom bindings. Each move opens the destination immediately; it does not merely highlight a row for later confirmation. Disabled or conflicting bindings produce an explanation. No extra Codex bindings or restart are required for the default setup.
 
-The P240's central scroll keys produced no usable SDK or raw USB input in the tested setup; they are not mapped. Side volume keys keep their original audio behavior. The symbol-based browsing codes need final device acceptance.
+For repeated browsing, use `#` + green once, then press **green alone** for each next item. To reverse direction, use `*` + green (or `2` + green), then continue with green alone. `22` starts in the downward direction without moving. Rapid green presses are queued separately rather than resetting one debounce timer. Numeric exit cancels pending steps so they cannot start dictation after leaving browsing.
+
+Direct `1`–`9` dialing outside browsing still follows the recent/fixed setting. In optional **Dialvia list** mode, its project-filtered snapshot stays in order until refresh or project change. This local filter does not change native sidebar navigation. The popup shows titles and dates and supports keyboard navigation. [Design and Xiaomi remote research](docs/navigation.md).
+
+The P240's central scroll keys produced no usable SDK or raw USB input in the tested setup; they are not mapped. Side volume keys keep their audio behavior. Idle red-key presses did not close the alpha.1 popup, so **use `5` + green or `23` + green to exit**. Red remains best-effort for call-state events. Long presses of `*` / `#` are not implemented: the available dial-string interface supplies neither reliable press/release timing nor per-digit host events. Numeric codes need green to submit; repeated native browsing uses green alone.
 
 ## Voice and notifications
 
@@ -82,7 +88,7 @@ cd Dialvia
 
 ```text
 dist/Dialvia-win-x64/Dialvia.exe
-dist/Dialvia-0.1.0-alpha.1-win-x64.zip
+dist/Dialvia-0.1.0-alpha.2-win-x64.zip
 dist/SHA256SUMS.txt
 ```
 

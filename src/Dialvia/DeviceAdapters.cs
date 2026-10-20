@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Interop.Plantronics;
 
@@ -26,6 +27,7 @@ namespace Dialvia {
         ICOMCallEvents_Event callEvents; ICOMDeviceListenerEvents_Event listenerEvents;
         ICOMSessionManagerEvents_Event managerEvents;
         string previousSoftphone; bool changingCall, disposed;
+        int nextCallId = 240;
         public event Action<string> DialRequested;
         public event Action<DeviceButton> ButtonPressed;
         public event Action<string> StatusChanged;
@@ -80,14 +82,18 @@ namespace Dialvia {
         }
         void OnCallState(COMCallEventArgs value) {
             CallState state = value.CallState;
+            int eventCallId = -1;
+            try { if (value.call != null) eventCallId = ((ICOMCall)value.call).Id; } catch (COMException) { }
             Ui(delegate {
-                if (call != null && !changingCall && (state == CallState.CallState_TerminateCall || state == CallState.CallState_RejectCall) && ButtonPressed != null)
+                bool matchesCall = call != null && ((ICOMCall)call).Id == eventCallId;
+                AppPaths.Log("CALL_STATE " + state + " id=" + eventCallId + " tracked=" + matchesCall + " internal=" + changingCall);
+                if (matchesCall && !changingCall && (state == CallState.CallState_TerminateCall || state == CallState.CallState_RejectCall || state == CallState.CallState_CallEnded || state == CallState.CallState_CallIdle) && ButtonPressed != null)
                     ButtonPressed(DeviceButton.EndVoice);
             });
         }
         void OnDevice(COMStateDeviceEventArgs value) { Ui(delegate { Disconnect(true); Status("设备变化，正在重新连接…"); }); }
         COMCall NewCall(string label) {
-            COMCall value = new LocalCall(240); COMContact contact = new LocalContact(label);
+            COMCall value = new LocalCall(++nextCallId); COMContact contact = new LocalContact(label);
             session.GetCallCommand().OutgoingCall(value, contact, CallAudioRoute.AudioRoute_ToHeadset);
             session.GetCallCommand().AnsweredCall(value); return value;
         }

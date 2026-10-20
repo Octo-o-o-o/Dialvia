@@ -4,6 +4,7 @@
   "dryRun": true,
   "voiceMode": "dictation",
   "sessionRouting": "recent",
+  "browseMode": "codex",
   "recentProjectPath": "",
   "voiceEnabled": true,
   "balloonNotifications": true,

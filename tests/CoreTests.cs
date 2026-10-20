@@ -21,6 +21,20 @@ class CoreTests {
     static void Main(string[] args) {
         SettingsStore.Validate(new Settings());
         Check(new Settings().sessionRouting == "recent", "recent sessions are the public default");
+        Check(new Settings().browseMode == "codex", "handset browsing uses native Codex commands by default");
+        Check(DialCode.Kind("22") == "browse" && DialCode.Kind("23") == "finish", "numeric enter and unconditional exit");
+        Check(DialCode.Kind("2", true) == "previous" && DialCode.Kind("8", true) == "next" && DialCode.Kind("5", true) == "finish", "numeric navigation context");
+        Check(DialCode.Kind("2") == "session" && DialCode.Kind("8") == "session" && DialCode.Kind("5") == "session", "numbered destinations preserved outside browsing");
+        Check(DialCode.Kind("0", true) == "start" && DialCode.Kind("*2", true) == "project", "voice and projects remain available during browsing");
+        Check(ShortcutKeys.Parse("Ctrl+Alt+[").Contains((ushort)0xdb) && ShortcutKeys.Parse("Ctrl+Alt+]").Contains((ushort)0xdd), "native sidebar OEM bracket chords");
+        Reject(delegate { ShortcutKeys.Parse("Ctrl+Left+F8"); }, "mixed action keys");
+        var queued = new DeferredGreenPresses(); DateTime origin = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        queued.Press(origin); queued.Press(origin.AddMilliseconds(80)); queued.Press(origin.AddMilliseconds(160));
+        Check(!queued.TakeReady(origin.AddMilliseconds(249)), "green dispatch waits for a buffered dial request");
+        Check(queued.TakeReady(origin.AddMilliseconds(250)) && queued.Count == 2, "rapid presses retain the first action");
+        Check(!queued.TakeReady(origin.AddMilliseconds(250)) && queued.TakeReady(origin.AddMilliseconds(330)) && queued.TakeReady(origin.AddMilliseconds(410)) && queued.Count == 0, "three rapid green presses produce three actions");
+        queued.Press(origin); queued.Cancel(); Check(!queued.TakeReady(origin.AddSeconds(1)), "dial codes and mode exit cancel pending green actions");
+        Check(ShortcutKeys.Parse("]+Ctrl+Alt").Last() == 0xdd, "modifiers are pressed before the action even for reordered custom chords");
         var recent = new List<RecentThread> {
             new RecentThread {Id="11111111-1111-4111-8111-111111111111",Title="first",ProjectPath=@"C:\Demo\Project",UpdatedAt=20},
             new RecentThread {Id="22222222-2222-4222-8222-222222222222",Title="second",ProjectPath=@"c:\demo\project\child",UpdatedAt=30},
@@ -42,6 +56,7 @@ class CoreTests {
         Reject(delegate { ShortcutKeys.Parse("Ctrl+Enter"); }, "unsupported chord");
         var invalid = new Settings(); invalid.voiceMode = "external"; Reject(delegate { SettingsStore.Validate(invalid); }, "unknown voice mode");
         invalid = new Settings(); invalid.device = "any-hid"; Reject(delegate { SettingsStore.Validate(invalid); }, "unimplemented device");
+        invalid = new Settings(); invalid.browseMode = "external"; Reject(delegate { SettingsStore.Validate(invalid); }, "unimplemented browse mode");
         invalid = new Settings(); invalid.sessions["1"] = new Target { label = "test", url = "file:///C:/Windows/System32/calc.exe" };
         Reject(delegate { SettingsStore.Validate(invalid); }, "arbitrary URI");
         invalid.sessions["1"].url = "codex://threads/------------------------------------";
@@ -61,6 +76,16 @@ class CoreTests {
             File.Delete(databasePath); FixtureDatabase(databasePath, "CREATE TABLE threads(id TEXT);");
             Reject(delegate { CodexInventory.Load(codex); }, "incompatible inventory schema has a manual-link fallback");
             string bindingPath = Path.Combine(codex, "keybindings.json");
+            Check(UserIntegration.SidebarShortcut(codex, false) == "Ctrl+Alt+[" && UserIntegration.SidebarShortcut(codex, true) == "Ctrl+Alt+]", "sidebar navigation uses sidebar commands rather than recent tab cycling");
+            File.WriteAllText(bindingPath, "[{\"command\":\"previousThread\",\"key\":\"Ctrl+Shift+F3\"}]");
+            string navigationBefore = File.ReadAllText(bindingPath);
+            Check(UserIntegration.SidebarShortcut(codex, false) == "Ctrl+Shift+F3" && File.ReadAllText(bindingPath) == navigationBefore, "honor custom sidebar binding without mutation");
+            File.WriteAllText(bindingPath, "[{\"command\":\"previousThread\",\"key\":null}]");
+            Reject(delegate { UserIntegration.SidebarShortcut(codex, false); }, "disabled sidebar binding never falls back");
+            File.WriteAllText(bindingPath, "[{\"command\":\"other\",\"key\":\"Alt+Ctrl+[\"}]");
+            Reject(delegate { UserIntegration.SidebarShortcut(codex, false); }, "default sidebar collision regardless of modifier order");
+            File.WriteAllText(bindingPath, "[{\"command\":\"previousThread\",\"key\":\"Ctrl+F3\"},{\"command\":\"other\",\"key\":\"Ctrl+F3\"}]");
+            Reject(delegate { UserIntegration.SidebarShortcut(codex, false); }, "explicit sidebar duplicate collision");
             File.WriteAllText(bindingPath, "[{\"command\":\"unrelated\",\"key\":\"Ctrl+F1\"}]");
             UserIntegration.InstallBindings(codex, data, new Settings());
             string once = File.ReadAllText(bindingPath); UserIntegration.InstallBindings(codex, data, new Settings());

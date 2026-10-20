@@ -19,7 +19,7 @@ namespace Dialvia {
             ClientSize = new Size(840, 660); MinimumSize = new Size(740, 560); Padding = new Padding(24); KeyPreview = true;
             var header = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 126, FlowDirection = FlowDirection.TopDown, WrapContents = false };
             header.Controls.Add(DesktopTheme.Label("选择接下来的会话", 22, true, false));
-            header.Controls.Add(DesktopTheme.Label("*／#＋绿键：上一条／下一条　空白绿键：确认　红键：返回", 9, false, true)); header.Controls.Add(projects);
+            header.Controls.Add(DesktopTheme.Label("2／8＋绿键：上一条／下一条　空白绿键：确认　5＋绿键：退出", 9, false, true)); header.Controls.Add(projects);
             header.ClientSizeChanged += delegate { projects.Width = Math.Max(100, header.ClientSize.Width - 4); };
             list.Columns.Add("编号", 60); list.Columns.Add("会话", 460); list.Columns.Add("最近活跃", 180); list.BackColor = DesktopTheme.Surface;
             list.ClientSizeChanged += delegate {
@@ -67,6 +67,6 @@ namespace Dialvia {
             int current = list.SelectedIndices.Count == 0 ? 0 : list.SelectedIndices[0];
             int next = Math.Max(0, Math.Min(list.Items.Count - 1, current + delta)); list.SelectedItems.Clear(); list.Items[next].Selected = true; list.Items[next].Focused = true; list.EnsureVisible(next);
         }
-        public void Confirm() { if (list.SelectedItems.Count == 0) return; RecentThread target = (RecentThread)list.SelectedItems[0].Tag; open(target); Close(); }
+        public void Confirm() { if (list.SelectedItems.Count == 0) return; RecentThread target = (RecentThread)list.SelectedItems[0].Tag; Close(); open(target); }
     }
 }
