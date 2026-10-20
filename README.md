@@ -5,7 +5,7 @@
 
 Turn a USB handset into a small Codex control surface: dial a number to open a chat, start voice dictation, and receive a task notification. **Plantronics Calisto P240 is the first and currently the only implemented device adapter.**
 
-> **0.1.0-alpha.3** — adds explicit `00` + green draft submission and focuses the current composer before dictation. Only `0` + green starts voice. 82 core assertions pass. The user confirmed smooth repeated-green navigation; the revised voice/send flow still needs device acceptance. Idle red-key exit is unreliable. See [validation](docs/validation.md).
+> **0.1.0-alpha.4** — corrects premature recording-state reset and keeps stop requests pending until fresh microphone-stop evidence arrives. Shortcuts now have an 80 ms key hold. 89 core assertions pass. The user confirmed dictation start and smooth repeated-green navigation; revised stop/send acceptance is pending. See [validation](docs/validation.md).
 
 ![Dialvia control center with fictional demo projects](assets/screenshots/projects.png)
 
@@ -49,6 +49,8 @@ For a complete handset dictation flow: `0` + green starts, green again (or `*0` 
 If Codex has already stopped recording but the controller still reports recording, use **Codex 已停止：校正状态** in voice settings/the tray after checking the UI. This resets handset tracking without sending a shortcut.
 
 Before dictation, Dialvia invokes Codex's native `focusMainChat` command (default `Alt+L`) and allows focus to settle. It uses read-only Windows microphone-usage metadata as an advisory stop check to avoid toggling an already-stopped dictation back on. This metadata is not a stable public voice-status API and does not prove that the current composer is recording. Missing or invalid records remain unknown. See [voice behavior](docs/voice.md).
+
+A stop request stays pending until a known microphone-stop timestamp is at or after this recording's start request. An old inactive record never clears a new start, even after a delay. Rapid repeated stop presses are suppressed; a later explicit retry requires evidence of continuing capture. Keyboard press/release are separated by 80 ms for Codex's Windows global-hotkey listener.
 
 **Projects keep fixed numbers; handset browsing defaults to Codex's own sidebar order.** It invokes the installed client's `previousThread` / `nextThread` commands and respects supported custom bindings. Each move opens the destination immediately; it does not merely highlight a row for later confirmation. Disabled or conflicting bindings produce an explanation. No extra Codex bindings or restart are required for the default setup.
 
@@ -96,7 +98,7 @@ cd Dialvia
 
 ```text
 dist/Dialvia-win-x64/Dialvia.exe
-dist/Dialvia-0.1.0-alpha.3-win-x64.zip
+dist/Dialvia-0.1.0-alpha.4-win-x64.zip
 dist/SHA256SUMS.txt
 ```
 

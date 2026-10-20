@@ -44,7 +44,7 @@ namespace Dialvia {
                 button.FlatAppearance.BorderSize = 0; button.Click += delegate { SelectPage(selected); }; navigation.Add(button); sidebar.Controls.Add(button);
             }
             sidebar.Controls.Add(new Panel { Height = 26, Width = 160 });
-            var sidebarNote = DesktopTheme.Label("P240 首发适配\nWindows x64\n0.1.0-alpha.3", 9, false, true); sidebarNote.MaximumSize = new Size(165, 0); sidebar.Controls.Add(sidebarNote);
+            var sidebarNote = DesktopTheme.Label("P240 首发适配\nWindows x64\n0.1.0-alpha.4", 9, false, true); sidebarNote.MaximumSize = new Size(165, 0); sidebar.Controls.Add(sidebarNote);
             var right = new Panel { Dock = DockStyle.Fill, Padding = new Padding(28, 24, 26, 18), BackColor = DesktopTheme.Paper };
             var header = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 92, FlowDirection = FlowDirection.TopDown, WrapContents = false }; header.Controls.Add(heading); header.Controls.Add(subtitle);
             var bottom = new Panel { Dock = DockStyle.Bottom, Height = 66, Padding = new Padding(0, 14, 0, 0) };

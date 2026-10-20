@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace Dialvia {
     public static class ShortcutKeys {
@@ -72,8 +73,15 @@ namespace Dialvia {
             var inputs = new List<Input>();
             foreach (ushort key in keys) inputs.Add(new Input { type = 1, data = new InputUnion { keyboard = new Keyboard { vk = key } } });
             for (int i = keys.Length - 1; i >= 0; i--) inputs.Add(new Input { type = 1, data = new InputUnion { keyboard = new Keyboard { vk = keys[i], flags = 2 } } });
-            if (SendInput((uint)inputs.Count, inputs.ToArray(), NativeInputSize) != inputs.Count) {
-                Input[] releases = inputs.Skip(keys.Length).ToArray(); SendInput((uint)releases.Length, releases, NativeInputSize);
+            Input[] presses = inputs.Take(keys.Length).ToArray(), releases = inputs.Skip(keys.Length).ToArray();
+            uint pressed = 0, released = 0;
+            try {
+                pressed = SendInput((uint)presses.Length, presses, NativeInputSize);
+                // Codex receives WM_HOTKEY and native release events through separate paths.
+                // A real hold lets its press callback run before the release is observed.
+                if (pressed == presses.Length) Thread.Sleep(80);
+            } finally { released = SendInput((uint)releases.Length, releases, NativeInputSize); }
+            if (pressed != presses.Length || released != releases.Length) {
                 error = "Windows 未完整接收快捷键。"; return false;
             }
             AppPaths.Log("SHORTCUT " + chord); return true;

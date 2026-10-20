@@ -17,7 +17,7 @@ P240 USB → Plantronics Hub COM → PlantronicsP240Adapter
 - `UserIntegration.cs`: additive voice-shortcut/hook configuration and read-only native sidebar binding resolution. Disabled or conflicting sidebar bindings are rejected. Voice-shortcut collisions fail before mutation. An ownership manifest retains user edits and unrelated hooks on removal. No hook-trust state is edited.
 - `Program.cs`: single-instance startup, native hook receiver, per-user installer, diagnostics. The generated COM interface assembly is a normal adjacent dependency.
 - `Models.cs`: configuration validation, atomic writes and paths.
-- `MicrophoneActivity.cs`: advisory, read-only Codex microphone timestamps and bare-button policy. Idle talk/off-hook never starts voice. Dictation focuses the native main composer before a delayed explicit start; known inactive capture prevents a stale stop from reopening recording. Missing/invalid metadata remains unknown.
+- `MicrophoneActivity.cs`: advisory, read-only Codex microphone timestamps, dictation lifecycle and bare-button policy. Idle talk/off-hook never starts voice. An old stop cannot clear a new start; a dispatched stop remains pending until fresh evidence, and duplicate/retry rules avoid rapid toggle reversals. Missing/invalid metadata remains unknown. Keyboard injection holds keys 80 ms between separate press/release calls for the Windows global-hotkey listener.
 
 The public configuration is empty and in detection mode, with recent-session routing as its default. Local inventory stays on the machine. Dictation remains a draft until the explicit `00` handset command requests `composer.submit`; no automatic send follows recording stop. A user-checked stale recording state can be reset without sending a shortcut.
 

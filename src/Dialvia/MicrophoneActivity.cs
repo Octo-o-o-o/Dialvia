@@ -28,10 +28,26 @@ namespace Dialvia {
                 }
             } catch (Exception) { return new MicrophoneActivity(); }
         }
-        public bool ConfirmsStopped(DateTime requestedUtc, DateTime nowUtc) {
-            // Allow metadata to catch up after starting; never mistake an old stop for a new one.
-            return State == CaptureState.Inactive && (StoppedUtc >= requestedUtc || nowUtc - requestedUtc >= TimeSpan.FromSeconds(2));
+        public bool ConfirmsStopped(DateTime requestedUtc) {
+            // An older stop never confirms a new recording, regardless of elapsed time.
+            return State == CaptureState.Inactive && StoppedUtc >= requestedUtc;
         }
+    }
+    public sealed class DictationState {
+        public bool Active { get; private set; }
+        public bool StopPending { get; private set; }
+        public DateTime RequestedUtc { get; private set; }
+        DateTime stopRequestedUtc;
+        public void StartRequested(DateTime now) { Active = true; StopPending = false; RequestedUtc = now; }
+        public void StopRequested(DateTime now) { StopPending = true; stopRequestedUtc = now; }
+        public bool CanRequestStop(MicrophoneActivity activity, DateTime now) {
+            return Active && (!StopPending || (activity.State == CaptureState.Active && now - stopRequestedUtc >= TimeSpan.FromSeconds(2)));
+        }
+        public bool Observe(MicrophoneActivity activity) {
+            if (!Active || !activity.ConfirmsStopped(RequestedUtc)) return false;
+            Reset(); return true;
+        }
+        public void Reset() { Active = StopPending = false; }
     }
     public static class BareVoiceButton {
         public static string Action(bool browsing, bool recording) { return browsing ? "browse" : recording ? "stop" : "idle"; }

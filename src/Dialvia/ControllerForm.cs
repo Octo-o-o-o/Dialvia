@@ -16,9 +16,9 @@ namespace Dialvia {
         SessionSnapshot recentSnapshot;
         string activeProjectPath = "";
         Timer reconnect, talkDelay, inboxTimer, ringTimer, voiceStartDelay;
-        bool voiceActive, closing, nativeBrowsing;
-        DateTime voiceRequestedUtc;
-        bool VoiceBusy { get { return voiceActive || (voiceStartDelay != null && voiceStartDelay.Enabled); } }
+        bool conversationActive, closing, nativeBrowsing;
+        readonly DictationState dictation = new DictationState();
+        bool VoiceBusy { get { return conversationActive || dictation.Active || (voiceStartDelay != null && voiceStartDelay.Enabled); } }
         int nativeDirection = 1;
         readonly DeferredGreenPresses pendingGreen = new DeferredGreenPresses();
         bool Browsing { get { return nativeBrowsing || (browser != null && !browser.IsDisposed); } }
@@ -61,9 +61,9 @@ namespace Dialvia {
             voiceStartDelay = new Timer { Interval = 180 };
             voiceStartDelay.Tick += delegate {
                 voiceStartDelay.Stop();
-                voiceRequestedUtc = DateTime.UtcNow;
+                DateTime requestedUtc = DateTime.UtcNow;
                 if (!SendShortcut("dictate")) return;
-                voiceActive = true; DeviceAction(delegate { adapter.SetVoiceState(true); });
+                dictation.StartRequested(requestedUtc); DeviceAction(delegate { adapter.SetVoiceState(true); });
                 Hint("已请求当前聊天听写；请确认输入框出现录音，再说话。结束按绿键，看到文字后 00＋绿键发送。");
             };
             ringTimer = new Timer { Interval = 1200 }; ringTimer.Tick += delegate { ringTimer.Stop(); DeviceAction(delegate { adapter.Ring(false); }); };
@@ -211,7 +211,7 @@ namespace Dialvia {
                 return;
             }
             if (!SendShortcut(settings.voiceMode == "dictation" ? "dictate" : "start") || settings.dryRun) return;
-            voiceActive = true; DeviceAction(delegate { adapter.SetVoiceState(true); });
+            conversationActive = true; DeviceAction(delegate { adapter.SetVoiceState(true); });
         }
         void HandleBareButton() {
             ReconcileVoice(); string action = BareVoiceButton.Action(Browsing, VoiceBusy);
@@ -219,20 +219,28 @@ namespace Dialvia {
             else Hint("开始听写：0＋绿键；发送已检查的草稿：00＋绿键。");
         }
         void ReconcileVoice() {
-            if (!voiceActive || settings.voiceMode != "dictation") return;
-            if (MicrophoneActivity.Read().ConfirmsStopped(voiceRequestedUtc, DateTime.UtcNow)) {
-                voiceActive = false; DeviceAction(delegate { adapter.SetVoiceState(false); });
+            if (!dictation.Active) return;
+            if (dictation.Observe(MicrophoneActivity.Read())) {
+                DeviceAction(delegate { adapter.SetVoiceState(false); });
                 AppPaths.Log("VOICE_SYNC microphone inactive; no toggle sent");
             }
         }
         bool EndVoice() {
             CancelPendingGreen(); if (voiceStartDelay != null) voiceStartDelay.Stop();
-            if (Browsing) { FinishBrowsing(); return true; } ReconcileVoice(); if (!voiceActive) return true;
-            if (!SendShortcut(settings.voiceMode == "dictation" ? "dictate" : "end")) return false;
-            voiceActive = false; DeviceAction(delegate { adapter.SetVoiceState(false); }); return true;
+            if (Browsing) { FinishBrowsing(); return true; } ReconcileVoice();
+            if (dictation.Active) {
+                if (!dictation.CanRequestStop(MicrophoneActivity.Read(), DateTime.UtcNow)) { Hint("停止请求正在确认；请等文字出现。界面已停止而状态未同步时，可在托盘校正状态。"); return false; }
+                if (!SendShortcut("dictate")) return false;
+                dictation.StopRequested(DateTime.UtcNow);
+                AppPaths.Log("VOICE_STOP_REQUEST awaiting capture confirmation");
+                Hint("已请求结束听写；等录音停止、文字出现后，再按 00＋绿键发送。"); return false;
+            }
+            if (!conversationActive) return true;
+            if (!SendShortcut("end")) return false;
+            conversationActive = false; DeviceAction(delegate { adapter.SetVoiceState(false); }); return true;
         }
         void ResetVoiceTracking() {
-            CancelPendingGreen(); voiceStartDelay.Stop(); voiceActive = false; DeviceAction(delegate { adapter.SetVoiceState(false); });
+            CancelPendingGreen(); voiceStartDelay.Stop(); conversationActive = false; dictation.Reset(); DeviceAction(delegate { adapter.SetVoiceState(false); });
             Hint("已校正为停止录音状态，没有向 Codex 发送快捷键。");
         }
         void ShowSettings(int page) {

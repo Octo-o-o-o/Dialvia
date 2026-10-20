@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-alpha.4 — 2026-10-20
+
+- Fix premature recording reset: an older inactive microphone record never clears a new start, regardless of elapsed time.
+- Retain a stop request as active/pending until fresh stop evidence arrives; suppress rapid repeats and require known continuing capture for a later explicit retry.
+- Separate native key-down/key-up by 80 ms for the Windows global-hotkey listener's distinct press/release event paths, releasing keys even after partial injection.
+- Add diagnostic base-button and numeric event-type logging without remapping volume keys.
+- Expand core checks to 89 assertions, including delayed start and stop-confirmation regressions. Revised hardware stop/send acceptance remains pending.
+
 ## 0.1.0-alpha.3 — 2026-10-20
 
 - Add explicit `00` + green submission of the reviewed Codex draft through `composer.submit`, with a dedicated configurable binding.

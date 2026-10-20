@@ -60,6 +60,7 @@ namespace Dialvia {
                     callEvents.onCallRequested += OnCallRequested; callEvents.onCallStateChanged += OnCallState;
                     listenerEvents = (ICOMDeviceListenerEvents_Event)device.DeviceListener;
                     listenerEvents.onHeadsetButtonPressed += OnHeadset;
+                    listenerEvents.onBaseButtonPressed += OnBaseButton;
                     managerEvents = (ICOMSessionManagerEvents_Event)manager; managerEvents.onDeviceStateChanged += OnDevice;
                     manager.UserPreference.DefaultSoftphone = SessionName;
                 }
@@ -73,12 +74,16 @@ namespace Dialvia {
         void OnHeadset(COMDeviceListenerEventArgs value) {
             DeviceHeadsetButton button = value.HeadsetButton;
             Ui(delegate {
-                AppPaths.Log("BUTTON " + button);
+                AppPaths.Log("BUTTON " + button + " raw=" + (int)button + " event=" + value.DeviceEventType);
                 if (ButtonPressed == null) return;
                 if (button == DeviceHeadsetButton.HeadsetButton_Talk) ButtonPressed(DeviceButton.ToggleVoice);
                 else if (button == DeviceHeadsetButton.HeadsetButton_OffHook) ButtonPressed(DeviceButton.StartVoice);
                 else if (button == DeviceHeadsetButton.HeadsetButton_OnHook || button == DeviceHeadsetButton.HeadsetButton_Reject) ButtonPressed(DeviceButton.EndVoice);
             });
+        }
+        void OnBaseButton(COMDeviceListenerEventArgs value) {
+            DeviceBaseButton button = value.BaseButton;
+            Ui(delegate { AppPaths.Log("BASE_BUTTON " + button + " raw=" + (int)button + " event=" + value.DeviceEventType); });
         }
         void OnCallState(COMCallEventArgs value) {
             CallState state = value.CallState;
@@ -114,7 +119,7 @@ namespace Dialvia {
         void Disconnect(bool restore) {
             try {
                 if (callEvents != null) { callEvents.onCallRequested -= OnCallRequested; callEvents.onCallStateChanged -= OnCallState; }
-                if (listenerEvents != null) listenerEvents.onHeadsetButtonPressed -= OnHeadset;
+                if (listenerEvents != null) { listenerEvents.onHeadsetButtonPressed -= OnHeadset; listenerEvents.onBaseButtonPressed -= OnBaseButton; }
                 if (managerEvents != null) managerEvents.onDeviceStateChanged -= OnDevice;
                 if (call != null && session != null) session.GetCallCommand().TerminateCall(call);
                 if (restore && takeOwnership && manager != null && manager.UserPreference.DefaultSoftphone == SessionName)
