@@ -11,6 +11,7 @@ namespace Dialvia {
         Settings draft;
         readonly Action<Settings> save;
         readonly Action<Settings> notifyTest;
+        readonly Action resetVoice;
         readonly Action<string> browse;
         readonly Func<string> status;
         readonly Func<List<RecentThread>> inventoryProvider;
@@ -28,9 +29,9 @@ namespace Dialvia {
         Label startupState, connectionState;
         string bindingView = "project";
         bool dirty, initializing = true;
-        public SettingsWindow(Settings value, Action<Settings> onSave, Func<string> getStatus, Action<Settings> onNotifyTest, Action<string> onBrowse, Func<List<RecentThread>> loadInventory, bool isPreview) {
+        public SettingsWindow(Settings value, Action<Settings> onSave, Func<string> getStatus, Action<Settings> onNotifyTest, Action onResetVoice, Action<string> onBrowse, Func<List<RecentThread>> loadInventory, bool isPreview) {
             draft = SettingsStore.Json.Deserialize<Settings>(SettingsStore.Json.Serialize(value)); save = onSave; status = getStatus;
-            notifyTest = onNotifyTest; browse = onBrowse; inventoryProvider = loadInventory; preview = isPreview;
+            notifyTest = onNotifyTest; resetVoice = onResetVoice; browse = onBrowse; inventoryProvider = loadInventory; preview = isPreview;
             DesktopTheme.Apply(this); Text = "Dialvia · 控制中心"; ClientSize = new Size(1080, 770); MinimumSize = new Size(960, 680);
             var sidebar = new FlowLayoutPanel { Dock = DockStyle.Left, Width = 208, Padding = new Padding(20, 26, 14, 20), FlowDirection = FlowDirection.TopDown, WrapContents = false, BackColor = DesktopTheme.Surface };
             sidebar.Controls.Add(new PictureBox { Image = Program.BrandImage, Width = 48, Height = 48, SizeMode = PictureBoxSizeMode.Zoom, Margin = new Padding(0, 0, 0, 12) });
@@ -43,7 +44,7 @@ namespace Dialvia {
                 button.FlatAppearance.BorderSize = 0; button.Click += delegate { SelectPage(selected); }; navigation.Add(button); sidebar.Controls.Add(button);
             }
             sidebar.Controls.Add(new Panel { Height = 26, Width = 160 });
-            var sidebarNote = DesktopTheme.Label("P240 首发适配\nWindows x64\n0.1.0-alpha.2", 9, false, true); sidebarNote.MaximumSize = new Size(165, 0); sidebar.Controls.Add(sidebarNote);
+            var sidebarNote = DesktopTheme.Label("P240 首发适配\nWindows x64\n0.1.0-alpha.3", 9, false, true); sidebarNote.MaximumSize = new Size(165, 0); sidebar.Controls.Add(sidebarNote);
             var right = new Panel { Dock = DockStyle.Fill, Padding = new Padding(28, 24, 26, 18), BackColor = DesktopTheme.Paper };
             var header = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 92, FlowDirection = FlowDirection.TopDown, WrapContents = false }; header.Controls.Add(heading); header.Controls.Add(subtitle);
             var bottom = new Panel { Dock = DockStyle.Bottom, Height = 66, Padding = new Padding(0, 14, 0, 0) };
@@ -110,7 +111,7 @@ namespace Dialvia {
             detection.CheckedChanged += delegate { draft.dryRun = detection.Checked; Changed(); }; mode.Controls.Add(detection);
             mode.Controls.Add(DesktopTheme.Label("0＋绿键：语音输入　*编号＋绿键：固定项目\n22＋绿键进入后，单按绿键连续切换；2 上／8 下／5 退出加绿键", 10, false, false));
             var guide = Card(page, "日常使用", "用熟悉的设备继续工作，先选目标，再开始说话。");
-            guide.Controls.Add(DesktopTheme.Label("听写生成文字草稿，由你确认发送。\n设置窗口可随时收起，退出程序请使用托盘菜单。", 10, false, false));
+            guide.Controls.Add(DesktopTheme.Label("0＋绿键开始听写，再按绿键结束；看到草稿后 00＋绿键发送。\n设置窗口可随时收起，退出程序请使用托盘菜单。", 10, false, false));
             return page;
         }
         Control BuildBindings() {
@@ -188,8 +189,11 @@ namespace Dialvia {
             enabled.CheckedChanged += delegate { draft.voiceEnabled = enabled.Checked; Changed(); }; voice.Controls.Add(enabled);
             var mode = new BrandComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 620 }; mode.Items.AddRange(new object[] {"听写 · 先生成文字，确认后发送", "实时语音对话 · 需要 Codex 当前任务支持"}); mode.SelectedIndex = draft.voiceMode == "dictation" ? 0 : 1;
             mode.SelectedIndexChanged += delegate { draft.voiceMode = mode.SelectedIndex == 0 ? "dictation" : "conversation"; Changed(); }; voice.Controls.Add(mode);
-            voice.Controls.Add(DesktopTheme.Actions(Button("选择麦克风与声音输出", false, delegate { if (!preview) Process.Start(new ProcessStartInfo("ms-settings:sound") { UseShellExecute = true }); })));
+            voice.Controls.Add(DesktopTheme.Actions(Button("选择麦克风与声音输出", false, delegate { if (!preview) Process.Start(new ProcessStartInfo("ms-settings:sound") { UseShellExecute = true }); }), Button("Codex 已停止：校正状态", false, delegate { if (!preview) resetVoice(); })));
             voice.Controls.Add(DesktopTheme.Label("音频设备跟随 Windows / Codex 的选择；不会强制替换系统默认设备。", 9, false, true));
+            voice.Controls.Add(DesktopTheme.Label("发送草稿：00＋绿键。先结束听写，等文字出现并检查后再发送。", 9, false, true));
+            voice.Controls.Add(DesktopTheme.Label("仅 0＋绿键开始；先聚焦当前聊天输入框。空闲单按绿／红键不会开始录音。", 9, false, true));
+            voice.Controls.Add(DesktopTheme.Label("界面已经停止录音、话机仍提示录音时，可校正状态；该操作不发送键盘快捷键。", 9, false, true));
             var notification = Card(page, "完成时提醒我", "任务通知只显示通用完成提示，保持你的内容留在 Codex。");
             var balloons = new CheckBox { Text = "显示操作与完成通知", Checked = draft.balloonNotifications, AutoSize = true, Margin = new Padding(0, 4, 0, 12) };
             var ring = new CheckBox { Text = "让 P240 短铃提示", Checked = draft.ringNotifications, AutoSize = true, Margin = new Padding(0, 0, 0, 12) };
@@ -203,7 +207,7 @@ namespace Dialvia {
             startup.Controls.Add(DesktopTheme.Actions(Button("安装并开启自启", true, delegate { if (!preview) Installer.Install(); RefreshStartupState(); }), Button("关闭自启", false, delegate { if (!preview) Installer.SetAutoStart(false); RefreshStartupState(); })));
             startup.Controls.Add(DesktopTheme.Label("自启开关立即生效，不需要管理员权限。", 9, false, true));
             var integration = Card(page, "连接 Codex", "保留原有快捷键，冲突时显示说明；通知 Hook 需要首次审阅。 ");
-            integration.Controls.Add(DesktopTheme.Actions(Button("配置语音快捷键", false, delegate { if (preview) return; UserIntegration.InstallBindings(AppPaths.CodexHome, AppPaths.Data, draft); MessageBox.Show(this, "快捷键已配置。若无响应，请等其他任务空闲后重开 Codex。", "Dialvia"); }), Button("配置任务完成通知", false, delegate { if (preview) return; UserIntegration.InstallHook(AppPaths.CodexHome, Program.Executable); MessageBox.Show(this, "请在 Codex Hooks 中审阅并信任 Dialvia task notification。", "Dialvia"); })));
+            integration.Controls.Add(DesktopTheme.Actions(Button("配置听写与发送快捷键", false, delegate { if (preview) return; UserIntegration.InstallBindings(AppPaths.CodexHome, AppPaths.Data, draft); MessageBox.Show(this, "快捷键已配置。若新发送键无响应，请等其他任务空闲后重开 Codex。", "Dialvia"); }), Button("配置任务完成通知", false, delegate { if (preview) return; UserIntegration.InstallHook(AppPaths.CodexHome, Program.Executable); MessageBox.Show(this, "请在 Codex Hooks 中审阅并信任 Dialvia task notification。", "Dialvia"); })));
             var advanced = Card(page, "本机资料与高级设置", "日常编号通过图形界面完成，JSON 仅用于高级调整。");
             advanced.Controls.Add(DesktopTheme.Actions(Button("打开资料目录", false, delegate { if (!preview) Process.Start(new ProcessStartInfo(AppPaths.Data) { UseShellExecute = true }); }), Button("高级：编辑 JSON", false, delegate { if (!preview) Process.Start("notepad.exe", AppPaths.Config); }), Button("项目主页", false, delegate { if (!preview) Process.Start(new ProcessStartInfo("https://github.com/Octo-o-o-o/Dialvia") { UseShellExecute = true }); })));
             return page;

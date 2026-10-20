@@ -5,6 +5,7 @@
   "voiceMode": "dictation",
   "sessionRouting": "recent",
   "browseMode": "codex",
+  "sendShortcut": "Ctrl+Alt+Shift+F12",
   "recentProjectPath": "",
   "voiceEnabled": true,
   "balloonNotifications": true,

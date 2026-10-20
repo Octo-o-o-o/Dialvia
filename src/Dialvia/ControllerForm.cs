@@ -15,8 +15,10 @@ namespace Dialvia {
         SessionBrowserWindow browser;
         SessionSnapshot recentSnapshot;
         string activeProjectPath = "";
-        Timer reconnect, talkDelay, inboxTimer, ringTimer;
+        Timer reconnect, talkDelay, inboxTimer, ringTimer, voiceStartDelay;
         bool voiceActive, closing, nativeBrowsing;
+        DateTime voiceRequestedUtc;
+        bool VoiceBusy { get { return voiceActive || (voiceStartDelay != null && voiceStartDelay.Enabled); } }
         int nativeDirection = 1;
         readonly DeferredGreenPresses pendingGreen = new DeferredGreenPresses();
         bool Browsing { get { return nativeBrowsing || (browser != null && !browser.IsDisposed); } }
@@ -39,11 +41,12 @@ namespace Dialvia {
             menu.Items.Add("本机最近会话列表", null, delegate { ShowBrowser(activeProjectPath, 0); });
             menu.Items.Add("会话与项目", null, delegate { ShowSettings(1); });
             menu.Items.Add("语音与通知", null, delegate { ShowSettings(2); });
+            menu.Items.Add("Codex 已停止录音：校正状态", null, delegate { ResetVoiceTracking(); });
             menu.Items.Add(new ToolStripSeparator());
             var startup = new ToolStripMenuItem("登录 Windows 时启动");
             startup.Click += delegate { try { Installer.SetAutoStart(!Installer.AutoStartEnabled); startup.Checked = Installer.AutoStartEnabled; } catch (Exception ex) { Hint(ex.Message); } }; menu.Items.Add(startup);
             var detection = new ToolStripMenuItem("检测模式");
-            detection.Click += delegate { if (voiceActive) { Hint("请先停止语音。"); return; } settings.dryRun = !settings.dryRun; SettingsStore.Save(AppPaths.Config, settings); detection.Checked = settings.dryRun; }; menu.Items.Add(detection);
+            detection.Click += delegate { if (VoiceBusy) { Hint("请先停止语音。"); return; } settings.dryRun = !settings.dryRun; SettingsStore.Save(AppPaths.Config, settings); detection.Checked = settings.dryRun; }; menu.Items.Add(detection);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("打开运行日志", null, delegate { Process.Start("notepad.exe", Path.Combine(AppPaths.Data, "dialvia.log")); });
             menu.Items.Add("退出 Dialvia", null, delegate { Close(); });
@@ -52,8 +55,16 @@ namespace Dialvia {
             tray.MouseClick += delegate(object sender, MouseEventArgs click) { if (click.Button == MouseButtons.Left) ShowSettings(0); };
             talkDelay = new Timer { Interval = 40 };
             talkDelay.Tick += delegate {
-                if (pendingGreen.TakeReady(DateTime.UtcNow)) { if (Browsing) ConfirmBrowsing(); else if (voiceActive) EndVoice(); else StartVoice(); }
+                if (pendingGreen.TakeReady(DateTime.UtcNow)) HandleBareButton();
                 if (pendingGreen.Count == 0) talkDelay.Stop();
+            };
+            voiceStartDelay = new Timer { Interval = 180 };
+            voiceStartDelay.Tick += delegate {
+                voiceStartDelay.Stop();
+                voiceRequestedUtc = DateTime.UtcNow;
+                if (!SendShortcut("dictate")) return;
+                voiceActive = true; DeviceAction(delegate { adapter.SetVoiceState(true); });
+                Hint("已请求当前聊天听写；请确认输入框出现录音，再说话。结束按绿键，看到文字后 00＋绿键发送。");
             };
             ringTimer = new Timer { Interval = 1200 }; ringTimer.Tick += delegate { ringTimer.Stop(); DeviceAction(delegate { adapter.Ring(false); }); };
             adapter = new PlantronicsP240Adapter(this, true);
@@ -61,7 +72,7 @@ namespace Dialvia {
             adapter.StatusChanged += delegate(string status) { deviceStatus = status; string tip = "Dialvia · " + status; tray.Text = tip.Length > 63 ? tip.Substring(0, 63) : tip; };
             adapter.ButtonPressed += delegate(DeviceButton button) {
                 if (button == DeviceButton.ToggleVoice) { pendingGreen.Press(DateTime.UtcNow); talkDelay.Start(); }
-                else if (button == DeviceButton.StartVoice) StartVoice(); else EndVoice();
+                else if (button == DeviceButton.StartVoice) Hint("开始听写请按 0＋绿键。"); else EndVoice();
             };
             reconnect = new Timer { Interval = 5000 };
             reconnect.Tick += delegate {
@@ -69,7 +80,7 @@ namespace Dialvia {
                 if (File.Exists(stop)) { File.Delete(stop); Close(); return; }
                 if (!adapter.Connected) adapter.Connect();
             }; reconnect.Start();
-            inboxTimer = new Timer { Interval = 1000 }; inboxTimer.Tick += delegate { ReadInbox(); }; inboxTimer.Start();
+            inboxTimer = new Timer { Interval = 1000 }; inboxTimer.Tick += delegate { ReconcileVoice(); ReadInbox(); }; inboxTimer.Start();
             adapter.Connect();
             if (settings.dryRun) Hint("检测模式：按键只显示提示。配置编号并关闭检测模式后启用控制。");
             string welcome = Path.Combine(AppPaths.Data, "welcome.seen");
@@ -94,9 +105,16 @@ namespace Dialvia {
                 DeviceAction(delegate { adapter.ClearDialDisplay(); }); return;
             }
             if (kind == "finish") { FinishBrowsing(); DeviceAction(delegate { adapter.ClearDialDisplay(); }); return; }
+            if (kind == "send") {
+                if (!Once("send-draft")) return;
+                FinishBrowsing(false); string message;
+                ReconcileVoice();
+                if (DraftSubmission.Request(codex, AppPaths.CodexHome, VoiceBusy || MicrophoneActivity.Read().State == CaptureState.Active, settings.dryRun, out message)) AppPaths.Log("SEND_REQUEST composer.submit");
+                Hint(message); DeviceAction(delegate { adapter.ClearDialDisplay(); }); return;
+            }
             if (kind == "start") {
                 if (code == "0") StartVoice();
-                else if (Browsing) ConfirmBrowsing(); else StartVoice(); return;
+                else HandleBareButton(); return;
             }
             if (kind == "end") { EndVoice(); return; }
             if (kind == "mute") { SendShortcut("mute"); return; }
@@ -123,13 +141,13 @@ namespace Dialvia {
             if (!Once(target.url)) return;
             FinishBrowsing(false);
             if (settings.dryRun) { Hint("检测成功：" + target.label); return; }
-            if (voiceActive && !EndVoice()) return;
+            if (VoiceBusy && !EndVoice()) return;
             try { codex.OpenThread(target.url); Hint("进入：" + target.label); DeviceAction(delegate { adapter.ClearDialDisplay(); }); }
             catch (Exception ex) { Hint("切换失败：" + ex.Message); }
         }
         void ShowBrowser(string project, int movement) {
             CancelPendingGreen();
-            if (voiceActive && !EndVoice()) return;
+            if (VoiceBusy && !EndVoice()) return;
             nativeBrowsing = false;
             try {
                 if (browser == null || browser.IsDisposed) {
@@ -142,7 +160,7 @@ namespace Dialvia {
         }
         void BeginBrowsing(int movement) {
             if (settings.browseMode == "list" || (browser != null && !browser.IsDisposed)) { ShowBrowser(activeProjectPath, movement); return; }
-            if (voiceActive && !EndVoice()) return;
+            if (VoiceBusy && !EndVoice()) return;
             if (browser != null && !browser.IsDisposed) browser.Close();
             try {
                 string error;
@@ -179,21 +197,48 @@ namespace Dialvia {
             Hint(error); return false;
         }
         void StartVoice() {
-            CancelPendingGreen(); if (voiceActive || !Once("start")) return;
+            CancelPendingGreen(); ReconcileVoice(); if (VoiceBusy || !Once("start")) return;
             FinishBrowsing(false);
             if (!settings.voiceEnabled) { Hint("语音控制已在设置中关闭。"); return; }
+            if (settings.voiceMode == "dictation" && !settings.dryRun) {
+                if (MicrophoneActivity.Read().State == CaptureState.Active) { Hint("Codex 正在使用麦克风；请先在界面结束当前录音，再按 0＋绿键。"); return; }
+                try {
+                    string error;
+                    if (!codex.Shortcut(UserIntegration.FocusComposerShortcut(AppPaths.CodexHome), out error)) { Hint(error); return; }
+                    // Let the native focus command reach the renderer before requesting global dictation.
+                    voiceStartDelay.Start();
+                } catch (Exception ex) { Hint(ex.Message); }
+                return;
+            }
             if (!SendShortcut(settings.voiceMode == "dictation" ? "dictate" : "start") || settings.dryRun) return;
             voiceActive = true; DeviceAction(delegate { adapter.SetVoiceState(true); });
         }
+        void HandleBareButton() {
+            ReconcileVoice(); string action = BareVoiceButton.Action(Browsing, VoiceBusy);
+            if (action == "browse") ConfirmBrowsing(); else if (action == "stop") EndVoice();
+            else Hint("开始听写：0＋绿键；发送已检查的草稿：00＋绿键。");
+        }
+        void ReconcileVoice() {
+            if (!voiceActive || settings.voiceMode != "dictation") return;
+            if (MicrophoneActivity.Read().ConfirmsStopped(voiceRequestedUtc, DateTime.UtcNow)) {
+                voiceActive = false; DeviceAction(delegate { adapter.SetVoiceState(false); });
+                AppPaths.Log("VOICE_SYNC microphone inactive; no toggle sent");
+            }
+        }
         bool EndVoice() {
-            CancelPendingGreen(); if (Browsing) { FinishBrowsing(); return true; } if (!voiceActive) return true;
+            CancelPendingGreen(); if (voiceStartDelay != null) voiceStartDelay.Stop();
+            if (Browsing) { FinishBrowsing(); return true; } ReconcileVoice(); if (!voiceActive) return true;
             if (!SendShortcut(settings.voiceMode == "dictation" ? "dictate" : "end")) return false;
             voiceActive = false; DeviceAction(delegate { adapter.SetVoiceState(false); }); return true;
+        }
+        void ResetVoiceTracking() {
+            CancelPendingGreen(); voiceStartDelay.Stop(); voiceActive = false; DeviceAction(delegate { adapter.SetVoiceState(false); });
+            Hint("已校正为停止录音状态，没有向 Codex 发送快捷键。");
         }
         void ShowSettings(int page) {
             if (settingsWindow == null || settingsWindow.IsDisposed) {
                 settingsWindow = new SettingsWindow(settings, delegate(Settings updated) {
-                    if (voiceActive) throw new InvalidOperationException("请先停止当前语音。");
+                    if (VoiceBusy) throw new InvalidOperationException("请先停止当前语音。");
                     FinishBrowsing(false);
                     SettingsStore.Save(AppPaths.Config, updated);
                     settings = SettingsStore.Json.Deserialize<Settings>(SettingsStore.Json.Serialize(updated));
@@ -201,13 +246,13 @@ namespace Dialvia {
                 }, delegate { return deviceStatus; }, delegate(Settings proposed) {
                     Settings previous = settings;
                     try { settings = proposed; NotifyTask("Dialvia 通知测试"); } finally { settings = previous; }
-                }, delegate(string project) { ShowBrowser(project, 0); }, delegate { return CodexInventory.Load(AppPaths.CodexHome); }, false);
+                }, ResetVoiceTracking, delegate(string project) { ShowBrowser(project, 0); }, delegate { return CodexInventory.Load(AppPaths.CodexHome); }, false);
             }
             settingsWindow.Show(); settingsWindow.SelectPage(page); settingsWindow.Activate();
         }
         void NotifyTask(string message) {
             Hint(message); AppPaths.Log("TASK_NOTIFICATION");
-            if (settings.ringNotifications && !voiceActive && !settings.dryRun) DeviceAction(delegate { adapter.Ring(true); ringTimer.Stop(); ringTimer.Start(); });
+            if (settings.ringNotifications && !VoiceBusy && !settings.dryRun) DeviceAction(delegate { adapter.Ring(true); ringTimer.Stop(); ringTimer.Start(); });
         }
         void ReadInbox() {
             foreach (string file in Directory.GetFiles(AppPaths.Inbox, "*.json").Take(5)) {
@@ -223,11 +268,11 @@ namespace Dialvia {
             if (File.Exists(request)) { File.Delete(request); ShowSettings(0); }
         }
         protected override void OnFormClosing(FormClosingEventArgs e) {
-            if (!closing && voiceActive && !EndVoice()) { e.Cancel = true; Hint("请先在 Codex 中结束录音，再退出 Dialvia。"); return; }
+            if (!closing && VoiceBusy && !EndVoice()) { e.Cancel = true; Hint("请先在 Codex 中结束录音，再退出 Dialvia。"); return; }
             closing = true; base.OnFormClosing(e);
         }
         protected override void OnFormClosed(FormClosedEventArgs e) {
-            foreach (Timer timer in new[] { reconnect, talkDelay, inboxTimer, ringTimer }) if (timer != null) timer.Dispose();
+            foreach (Timer timer in new[] { reconnect, talkDelay, inboxTimer, ringTimer, voiceStartDelay }) if (timer != null) timer.Dispose();
             if (browser != null) browser.Dispose(); if (settingsWindow != null) settingsWindow.Dispose();
             if (adapter != null) adapter.Dispose(); if (tray != null) { tray.Visible = false; tray.Dispose(); }
             base.OnFormClosed(e);

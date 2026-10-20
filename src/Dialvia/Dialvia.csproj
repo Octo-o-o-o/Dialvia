@@ -15,7 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs"/><Compile Include="Models.cs"/><Compile Include="CodexDesktop.cs"/>
-    <Compile Include="ControllerForm.cs"/><Compile Include="DeviceAdapters.cs"/><Compile Include="UserIntegration.cs"/>
+    <Compile Include="ControllerForm.cs"/><Compile Include="DeviceAdapters.cs"/><Compile Include="UserIntegration.cs"/><Compile Include="MicrophoneActivity.cs"/>
     <Compile Include="DesktopTheme.cs"/><Compile Include="SettingsWindow.cs"/><Compile Include="CodexInventory.cs"/><Compile Include="SessionBrowserWindow.cs"/><Compile Include="GuiPreview.cs"/>
     <EmbeddedResource Include="..\..\assets\brand\dialvia.ico"><LogicalName>Dialvia.AppIcon</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="..\..\assets\brand\dialvia-256.png"><LogicalName>Dialvia.BrandImage</LogicalName></EmbeddedResource>

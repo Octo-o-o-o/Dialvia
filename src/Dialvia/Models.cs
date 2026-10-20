@@ -13,6 +13,7 @@ namespace Dialvia {
         public string voiceMode = "dictation";
         public string sessionRouting = "recent";
         public string browseMode = "codex";
+        public string sendShortcut = "Ctrl+Alt+Shift+F12";
         public string recentProjectPath = "";
         public bool voiceEnabled = true, balloonNotifications = true, ringNotifications = false;
         public Dictionary<string, string> shortcuts = new Dictionary<string, string> {
@@ -36,6 +37,7 @@ namespace Dialvia {
                 throw new InvalidDataException("sessionRouting must be recent or fixed.");
             if (value.browseMode != "codex" && value.browseMode != "list")
                 throw new InvalidDataException("browseMode must be codex or list.");
+            ShortcutKeys.Parse(value.sendShortcut);
             if (value.sessions == null || value.projects == null || value.shortcuts == null)
                 throw new InvalidDataException("Missing target or shortcut configuration.");
             foreach (var map in new[] {value.sessions, value.projects}) foreach (var item in map) {
@@ -68,6 +70,7 @@ namespace Dialvia {
                 if (code == "5") return "finish";
             }
             if (code == "" || code == "0") return "start";
+            if (code == "00") return "send";
             if (code == "*0") return "end";
             if (code == "#0") return "mute";
             if (code == "*#" || code == "22") return "browse";

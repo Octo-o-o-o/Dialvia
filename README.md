@@ -5,7 +5,7 @@
 
 Turn a USB handset into a small Codex control surface: dial a number to open a chat, start voice dictation, and receive a task notification. **Plantronics Calisto P240 is the first and currently the only implemented device adapter.**
 
-> **0.1.0-alpha.2** — direct Codex sidebar navigation, one green press per step, direction controls and reliable numeric exit. 59 core assertions pass. The user confirmed native switching and smooth repeated-green navigation on P240. Idle red-key exit is unreliable. See [validation](docs/validation.md).
+> **0.1.0-alpha.3** — adds explicit `00` + green draft submission and focuses the current composer before dictation. Only `0` + green starts voice. 82 core assertions pass. The user confirmed smooth repeated-green navigation; the revised voice/send flow still needs device acceptance. Idle red-key exit is unreliable. See [validation](docs/validation.md).
 
 ![Dialvia control center with fictional demo projects](assets/screenshots/projects.png)
 
@@ -34,13 +34,21 @@ The P240 buffers digits locally. Enter a code, then press the green key to submi
 | `*` / `#` + green | Previous / next; also enters browsing |
 | `5` + green while browsing; `23` + green anywhere | Leave browsing, keeping the current chat |
 | Green with no digits while browsing | Move one more item in the current direction; optional popup mode confirms its selected item |
-| `0` + green, or green with no digits outside the browser | Start the selected voice mode |
-| Red during handset-started voice, or `*0` + green | Stop that voice session |
+| `0` + green | Start the selected voice mode in the current chat |
+| Green with no digits while idle | Show a hint; never start recording |
+| `00` + green | Explicitly send the current Codex draft after ending dictation and reviewing the text |
+| Green during handset-started voice, or `*0` + green | Stop that voice session; red is best-effort |
 | `#0` + green | Toggle microphone mute in a Codex voice conversation |
 | Red while dialing | Clear the pending number |
 | Device volume / mute keys | Retain the P240's own audio controls |
 
 Project bindings open existing chats; they do not create new projects or chats. Dictation produces a draft for you to review and send. Finish a recording before changing targets. The controller focuses Codex before voice shortcuts and preserves an already-maximized window.
+
+For a complete handset dictation flow: `0` + green starts, green again (or `*0` + green) stops, then wait for the text, review it and use **`00` + green** to send. Setup binds Codex's dedicated `composer.submit` command, defaulting to `Ctrl+Alt+Shift+F12`; there is no generic Enter fallback. Sending is refused while Dialvia still tracks a recording or when the submit binding is missing, disabled or conflicting. A new binding may need a Codex restart to load. The native command retains Codex's own empty-draft/disabled-submit behavior and configured follow-up behavior.
+
+If Codex has already stopped recording but the controller still reports recording, use **Codex 已停止：校正状态** in voice settings/the tray after checking the UI. This resets handset tracking without sending a shortcut.
+
+Before dictation, Dialvia invokes Codex's native `focusMainChat` command (default `Alt+L`) and allows focus to settle. It uses read-only Windows microphone-usage metadata as an advisory stop check to avoid toggling an already-stopped dictation back on. This metadata is not a stable public voice-status API and does not prove that the current composer is recording. Missing or invalid records remain unknown. See [voice behavior](docs/voice.md).
 
 **Projects keep fixed numbers; handset browsing defaults to Codex's own sidebar order.** It invokes the installed client's `previousThread` / `nextThread` commands and respects supported custom bindings. Each move opens the destination immediately; it does not merely highlight a row for later confirmation. Disabled or conflicting bindings produce an explanation. No extra Codex bindings or restart are required for the default setup.
 
@@ -88,7 +96,7 @@ cd Dialvia
 
 ```text
 dist/Dialvia-win-x64/Dialvia.exe
-dist/Dialvia-0.1.0-alpha.2-win-x64.zip
+dist/Dialvia-0.1.0-alpha.3-win-x64.zip
 dist/SHA256SUMS.txt
 ```
 

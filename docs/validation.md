@@ -1,4 +1,4 @@
-# Validation — 0.1.0-alpha.2
+# Validation — 0.1.0-alpha.3
 
 Evidence is split between the original controller on the development P240 and this extracted project. It is not a claim that every mode has passed.
 
@@ -8,7 +8,9 @@ Evidence is split between the original controller on the development P240 and th
 | Original dictation | User confirmed both recording and a resulting text draft on 2026-10-20. |
 | Maximized-window bug | Cause identified as unconditional SW_RESTORE; corrected in both implementations using IsIconic. Final visual confirmation of that specific fix is pending. |
 | COM call-state feedback | Original controller's managed COMCall/COMContact create/answer/terminate test passed after fixing E_FAIL. |
-| Automated core tests | 59 assertions passed locally: numeric navigation context, three distinct rapid green actions, delay/cancel behavior, preserved direct slots, native sidebar key resolution/customization/disabled commands/collisions, recent snapshots, read-only SQLite fixtures, ownership and hooks. CI repeats these tests. |
+| Automated core tests | 82 assertions passed locally: numeric navigation, distinct rapid green actions, delay/cancel, native binding resolution and conflict handling, legacy settings, explicit submit dispatch with a fake desktop, recording/detection refusal and no fallback on foreground refusal, read-only inventory, ownership and hooks. Added composer-focus resolution, idle-button no-start policy, invalid/unknown microphone metadata, stop-after-start and startup-grace checks. |
+| Alpha.3 submission | Dedicated `composer.submit` command was verified in the installed client. Missing/disabled/conflicting bindings and recording/detection guards are covered without sending a real message. Handset submission acceptance is pending. |
+| Alpha.3 voice alignment | User reported that `0` + green appeared not to record and red appeared to start. Windows independently logged Codex microphone capture from the first request until the next button, which does not establish the visible composer state. The revision focuses `focusMainChat` before dictation, permits explicit-code starts only, and uses advisory inactive-capture checks to avoid reopening an already-stopped recording. Revised hardware acceptance is pending. |
 | Graphical settings | Four control-center pages and the recent-session browser rendered and visually checked at Windows 150% scaling using fictional demo data. All public screenshots use this fixture. Startup installation and live process are checked separately. |
 | Per-user deployment | Installed outside inherited MSIX identity, verified the real LocalAppData executable and matching release hash, native HKCU Run value and live independent process (`IsProcessInJob=false`). Legacy private bindings were retained locally and its old startup entry removed. The control-center window and P240 connection were observed. |
 | Local recent index | The executable loaded the development machine's local inventory read-only; only the count was retained in diagnostic evidence. No private inventory is published. |

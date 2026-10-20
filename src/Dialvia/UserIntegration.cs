@@ -8,7 +8,7 @@ namespace Dialvia {
     public static class UserIntegration {
         public static readonly Dictionary<string, string> Commands = new Dictionary<string, string> {
             {"dictate", "globalDictationSingleTap"}, {"start", "composer.startVoiceMode"},
-            {"end", "realtimeVoice.endCall"}, {"mute", "realtimeVoice.toggleMicrophoneMute"}
+            {"end", "realtimeVoice.endCall"}, {"mute", "realtimeVoice.toggleMicrophoneMute"}, {"send", "composer.submit"}
         };
         static List<Dictionary<string, object>> Rows(object value) {
             var result = new List<Dictionary<string, object>>();
@@ -23,7 +23,11 @@ namespace Dialvia {
         }
         static string Text(Dictionary<string, object> item, string key) { object value; return item.TryGetValue(key, out value) ? Convert.ToString(value) : null; }
         public static string SidebarShortcut(string codexHome, bool next) {
-            string command = next ? "nextThread" : "previousThread", fallback = next ? "Ctrl+Alt+]" : "Ctrl+Alt+[";
+            return ResolveCommandShortcut(codexHome, next ? "nextThread" : "previousThread", next ? "Ctrl+Alt+]" : "Ctrl+Alt+[");
+        }
+        public static string SubmitShortcut(string codexHome) { return ResolveCommandShortcut(codexHome, "composer.submit", null); }
+        public static string FocusComposerShortcut(string codexHome) { return ResolveCommandShortcut(codexHome, "focusMainChat", "Alt+L"); }
+        static string ResolveCommandShortcut(string codexHome, string command, string fallback) {
             string path = Path.Combine(codexHome, "keybindings.json");
             var rows = File.Exists(path) ? Rows(SettingsStore.Json.DeserializeObject(File.ReadAllText(path))) : new List<Dictionary<string, object>>();
             var configured = rows.Where(x => Text(x, "command") == command).ToList();
@@ -33,13 +37,14 @@ namespace Dialvia {
                     if (String.IsNullOrWhiteSpace(chord)) continue;
                     try { ShortcutKeys.Parse(chord); } catch (ArgumentException) { continue; }
                     if (rows.Any(x => Text(x, "command") != command && SameShortcut(Text(x, "key"), chord)))
-                        throw new InvalidOperationException("Codex 会话切换键同时绑定了其他命令，请先解决冲突：" + chord);
+                        throw new InvalidOperationException("Codex 快捷键同时绑定了其他命令，请先解决冲突：" + chord);
                     return chord;
                 }
                 throw new InvalidOperationException("Codex 的 " + command + " 已禁用或使用不兼容快捷键；请为它设置修饰键＋F键或左右方向键。");
             }
+            if (fallback == null) throw new InvalidOperationException("请先在 Dialvia“启动与集成”配置听写与发送快捷键。");
             if (rows.Any(x => SameShortcut(Text(x, "key"), fallback)))
-                throw new InvalidOperationException("Codex 的默认会话切换键已被其他命令占用：" + fallback);
+                throw new InvalidOperationException("Codex 的默认命令快捷键已被其他命令占用：" + fallback);
             return fallback;
         }
         static bool SameShortcut(string first, string second) {
@@ -53,7 +58,7 @@ namespace Dialvia {
             var owned = File.Exists(manifest) ? Rows(SettingsStore.Json.DeserializeObject(File.ReadAllText(manifest))) : new List<Dictionary<string, object>>();
             var additions = new List<Dictionary<string, object>>();
             foreach (var item in Commands) {
-                string command = item.Value, chord = settings.shortcuts[item.Key];
+                string command = item.Value, chord = item.Key == "send" ? settings.sendShortcut : settings.shortcuts[item.Key];
                 var existing = rows.Where(x => Text(x, "command") == command).ToList();
                 if (existing.Count > 0) {
                     if (!existing.Any(x => String.Equals(Text(x, "key"), chord, StringComparison.OrdinalIgnoreCase)))
@@ -107,6 +112,18 @@ namespace Dialvia {
             }
             groups.RemoveAll(x => x.ContainsKey("hooks") && Rows(x["hooks"]).Count == 0);
             hooks["Stop"] = groups; AtomicFile.Write(path, SettingsStore.Json.Serialize(state));
+        }
+    }
+    public static class DraftSubmission {
+        public static bool Request(ICodexDesktop codex, string codexHome, bool recording, bool detection, out string message) {
+            if (recording) { message = "请先按绿色键或 *0＋绿键结束听写，等文字出现后再按 00＋绿键发送。"; return false; }
+            try {
+                string chord = UserIntegration.SubmitShortcut(codexHome);
+                if (detection) { message = "检测成功：发送当前草稿 → " + chord; return false; }
+                string error;
+                if (!codex.Shortcut(chord, out error)) { message = error; return false; }
+                message = "已触发 Codex 的发送草稿操作，请查看会话。"; return true;
+            } catch (Exception error) { message = error.Message; return false; }
         }
     }
 }

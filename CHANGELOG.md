@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0-alpha.3 — 2026-10-20
+
+- Add explicit `00` + green submission of the reviewed Codex draft through `composer.submit`, with a dedicated configurable binding.
+- Refuse sending while recording, in detection mode, or with missing/disabled/conflicting submit bindings. No generic Enter fallback.
+- Keep dictation stop and draft submission separate; follow Codex's own empty-draft and follow-up behavior.
+- Add an explicit recording-state correction action for when Codex has already stopped; it clears handset tracking without toggling dictation.
+- Require explicit `0` + green to start voice; idle talk/off-hook no longer starts recording. Preserve green-only stop and browsing.
+- Focus the native main chat composer before dictation and use read-only Windows capture metadata as an advisory stale-stop check, with unknown fallback and startup grace.
+- Expand core checks to 82 assertions, including submission, focus resolution, idle-button policy and capture-state fixtures.
+
 ## 0.1.0-alpha.2 — 2026-10-20
 
 - Default handset browsing to Codex's native previous/next sidebar commands, without opening a Dialvia window.

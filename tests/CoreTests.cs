@@ -7,6 +7,12 @@ using System.Text;
 using Dialvia;
 
 class CoreTests {
+    sealed class FakeDesktop : ICodexDesktop {
+        public int Calls; public string Last; public bool Accept = true;
+        public bool Focus(out string error) { error = null; return true; }
+        public bool Shortcut(string chord, out string error) { Calls++; Last = chord; error = Accept ? null : "focus refused"; return Accept; }
+        public void OpenThread(string url) { throw new Exception("Unexpected target navigation"); }
+    }
     [DllImport("winsqlite3.dll", CallingConvention=CallingConvention.Cdecl)] static extern int sqlite3_open_v2(byte[] path, out IntPtr database, int flags, IntPtr vfs);
     [DllImport("winsqlite3.dll", CallingConvention=CallingConvention.Cdecl)] static extern int sqlite3_exec(IntPtr database, byte[] sql, IntPtr callback, IntPtr argument, IntPtr error);
     [DllImport("winsqlite3.dll", CallingConvention=CallingConvention.Cdecl)] static extern int sqlite3_close(IntPtr database);
@@ -22,6 +28,9 @@ class CoreTests {
         SettingsStore.Validate(new Settings());
         Check(new Settings().sessionRouting == "recent", "recent sessions are the public default");
         Check(new Settings().browseMode == "codex", "handset browsing uses native Codex commands by default");
+        Check(DialCode.Kind("00") == "send" && DialCode.Kind("00", true) == "send", "explicit draft submission independent of browsing");
+        var legacy = SettingsStore.Json.Deserialize<Settings>("{\"schemaVersion\":1}"); SettingsStore.Validate(legacy);
+        Check(legacy.sendShortcut == "Ctrl+Alt+Shift+F12", "legacy settings get the dedicated submit shortcut");
         Check(DialCode.Kind("22") == "browse" && DialCode.Kind("23") == "finish", "numeric enter and unconditional exit");
         Check(DialCode.Kind("2", true) == "previous" && DialCode.Kind("8", true) == "next" && DialCode.Kind("5", true) == "finish", "numeric navigation context");
         Check(DialCode.Kind("2") == "session" && DialCode.Kind("8") == "session" && DialCode.Kind("5") == "session", "numbered destinations preserved outside browsing");
@@ -29,6 +38,16 @@ class CoreTests {
         Check(ShortcutKeys.Parse("Ctrl+Alt+[").Contains((ushort)0xdb) && ShortcutKeys.Parse("Ctrl+Alt+]").Contains((ushort)0xdd), "native sidebar OEM bracket chords");
         Reject(delegate { ShortcutKeys.Parse("Ctrl+Left+F8"); }, "mixed action keys");
         var queued = new DeferredGreenPresses(); DateTime origin = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        Check(BareVoiceButton.Action(false, false) == "idle", "unidentified bare green/red cannot start recording while idle");
+        Check(BareVoiceButton.Action(false, true) == "stop" && BareVoiceButton.Action(true, false) == "browse", "bare button preserves stop and continuous browsing");
+        Check(ShortcutKeys.Parse("Alt+L").SequenceEqual(new ushort[] {0x12, 0x4c}), "native main composer focus chord");
+        Check(MicrophoneActivity.FromFileTimes(0, 0).State == CaptureState.Unknown && MicrophoneActivity.FromFileTimes(Int64.MaxValue, 0).State == CaptureState.Unknown, "missing and corrupt capture metadata remain unknown");
+        Check(MicrophoneActivity.FromFileTimes(origin.ToFileTimeUtc(), 0).State == CaptureState.Active, "ongoing capture is recognized without accessing audio");
+        var stopped = MicrophoneActivity.FromFileTimes(origin.ToFileTimeUtc(), origin.AddSeconds(1).ToFileTimeUtc());
+        Check(stopped.ConfirmsStopped(origin, origin.AddSeconds(1)), "a confirmed stop after start avoids a blind toggle");
+        Check(!stopped.ConfirmsStopped(origin.AddSeconds(5), origin.AddMilliseconds(5100)), "old inactive metadata cannot clear a newly requested start");
+        Check(stopped.ConfirmsStopped(origin.AddSeconds(5), origin.AddSeconds(8)), "inactive capture after grace clears a failed start without toggling");
+        Check(!MicrophoneActivity.FromFileTimes(origin.ToFileTimeUtc(), origin.AddSeconds(-1).ToFileTimeUtc()).ConfirmsStopped(origin, origin.AddSeconds(9)), "inconsistent metadata cannot assert stopped");
         queued.Press(origin); queued.Press(origin.AddMilliseconds(80)); queued.Press(origin.AddMilliseconds(160));
         Check(!queued.TakeReady(origin.AddMilliseconds(249)), "green dispatch waits for a buffered dial request");
         Check(queued.TakeReady(origin.AddMilliseconds(250)) && queued.Count == 2, "rapid presses retain the first action");
@@ -77,6 +96,15 @@ class CoreTests {
             Reject(delegate { CodexInventory.Load(codex); }, "incompatible inventory schema has a manual-link fallback");
             string bindingPath = Path.Combine(codex, "keybindings.json");
             Check(UserIntegration.SidebarShortcut(codex, false) == "Ctrl+Alt+[" && UserIntegration.SidebarShortcut(codex, true) == "Ctrl+Alt+]", "sidebar navigation uses sidebar commands rather than recent tab cycling");
+            Check(UserIntegration.FocusComposerShortcut(codex) == "Alt+L", "focus the current main composer before global dictation");
+            File.WriteAllText(bindingPath, "[{\"command\":\"focusMainChat\",\"key\":null}]");
+            Reject(delegate { UserIntegration.FocusComposerShortcut(codex); }, "disabled composer focus cannot fall back into global overlay");
+            File.WriteAllText(bindingPath, "[{\"command\":\"other\",\"key\":\"Alt+L\"}]");
+            Reject(delegate { UserIntegration.FocusComposerShortcut(codex); }, "composer focus collision is refused");
+            File.WriteAllText(bindingPath, "[{\"command\":\"focusMainChat\",\"key\":\"Ctrl+F4\"}]");
+            Check(UserIntegration.FocusComposerShortcut(codex) == "Ctrl+F4", "custom compatible composer focus is respected");
+            File.Delete(bindingPath);
+            Reject(delegate { UserIntegration.SubmitShortcut(codex); }, "submit has no blind Enter or unconfigured fallback");
             File.WriteAllText(bindingPath, "[{\"command\":\"previousThread\",\"key\":\"Ctrl+Shift+F3\"}]");
             string navigationBefore = File.ReadAllText(bindingPath);
             Check(UserIntegration.SidebarShortcut(codex, false) == "Ctrl+Shift+F3" && File.ReadAllText(bindingPath) == navigationBefore, "honor custom sidebar binding without mutation");
@@ -86,9 +114,20 @@ class CoreTests {
             Reject(delegate { UserIntegration.SidebarShortcut(codex, false); }, "default sidebar collision regardless of modifier order");
             File.WriteAllText(bindingPath, "[{\"command\":\"previousThread\",\"key\":\"Ctrl+F3\"},{\"command\":\"other\",\"key\":\"Ctrl+F3\"}]");
             Reject(delegate { UserIntegration.SidebarShortcut(codex, false); }, "explicit sidebar duplicate collision");
+            File.WriteAllText(bindingPath, "[{\"command\":\"composer.submit\",\"key\":null}]");
+            Reject(delegate { UserIntegration.SubmitShortcut(codex); }, "disabled submit is respected");
+            File.WriteAllText(bindingPath, "[{\"command\":\"composer.submit\",\"key\":\"Ctrl+F12\"},{\"command\":\"other\",\"key\":\"Ctrl+F12\"}]");
+            Reject(delegate { UserIntegration.SubmitShortcut(codex); }, "submit collision is refused");
             File.WriteAllText(bindingPath, "[{\"command\":\"unrelated\",\"key\":\"Ctrl+F1\"}]");
             UserIntegration.InstallBindings(codex, data, new Settings());
             string once = File.ReadAllText(bindingPath); UserIntegration.InstallBindings(codex, data, new Settings());
+            Check(once.Contains("composer.submit") && UserIntegration.SubmitShortcut(codex) == "Ctrl+Alt+Shift+F12", "setup owns a dedicated native composer submit binding");
+            var fake = new FakeDesktop(); string submitMessage;
+            Check(!DraftSubmission.Request(fake, codex, true, false, out submitMessage) && fake.Calls == 0, "recording must finish before any send command");
+            Check(!DraftSubmission.Request(fake, codex, false, true, out submitMessage) && fake.Calls == 0, "detection mode cannot submit a draft");
+            Check(DraftSubmission.Request(fake, codex, false, false, out submitMessage) && fake.Calls == 1 && fake.Last == "Ctrl+Alt+Shift+F12", "explicit request dispatches the dedicated submit command once");
+            fake.Accept = false;
+            Check(!DraftSubmission.Request(fake, codex, false, false, out submitMessage) && submitMessage == "focus refused", "foreground refusal is returned without fallback keys");
             Check(File.ReadAllText(bindingPath) == once, "idempotent shortcut install");
             Check(once.Contains("unrelated"), "preserve existing shortcuts");
             File.WriteAllText(bindingPath, once.Replace("Ctrl+Alt+Shift+F8", "Ctrl+Alt+Shift+F7"));

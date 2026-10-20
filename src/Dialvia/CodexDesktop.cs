@@ -15,11 +15,12 @@ namespace Dialvia {
                     case "CTRL": key = 0x11; break; case "ALT": key = 0x12; break; case "SHIFT": key = 0x10; break;
                     case "LEFT": key = 0x25; if (functionKey) throw new ArgumentException("Only one action key is allowed."); functionKey = true; break;
                     case "RIGHT": key = 0x27; if (functionKey) throw new ArgumentException("Only one action key is allowed."); functionKey = true; break;
+                    case "L": key = 0x4c; if (functionKey) throw new ArgumentException("Only one action key is allowed."); functionKey = true; break;
                     case "[": key = 0xdb; if (functionKey) throw new ArgumentException("Only one action key is allowed."); functionKey = true; break;
                     case "]": key = 0xdd; if (functionKey) throw new ArgumentException("Only one action key is allowed."); functionKey = true; break;
                     default: int number;
                         if (!token.StartsWith("F", StringComparison.OrdinalIgnoreCase) || !Int32.TryParse(token.Substring(1), out number) || number < 1 || number > 24 || functionKey)
-                            throw new ArgumentException("Use Ctrl/Alt/Shift plus one F1–F24, Left/Right, [ or ] key.");
+                            throw new ArgumentException("Use Ctrl/Alt/Shift plus one F1–F24, Left/Right, L, [ or ] key.");
                         key = (ushort)(0x6f + number); functionKey = true; break;
                 }
                 if (keys.Contains(key)) throw new ArgumentException("Duplicate shortcut key."); keys.Add(key);
