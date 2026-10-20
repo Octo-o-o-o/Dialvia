@@ -5,7 +5,8 @@
 - Fix the observed P240 green-key stop route: raw 7 while idle, raw 3 during the controller's local call. Only active controller voice can use the compatibility stop.
 - Add the GUI/config compatibility switch and protect real volume-up followed by held-event sequences; document indistinguishable standalone volume holds.
 - The user confirmed start, single-green stop and draft text. Handset submission remains pending acceptance.
-- Expand core checks to 97 assertions, including the actual observed device-event sequence and volume controls.
+- Focus the main composer before submission; report shortcut dispatch without implying message submission. Document a fresh client/submittable-chat acceptance step.
+- Expand core checks to 98 assertions, including the observed device-event sequence, volume controls and focus-before-submit behavior.
 
 ## 0.1.0-alpha.4 — 2026-10-20
 

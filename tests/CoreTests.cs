@@ -9,8 +9,9 @@ using Dialvia;
 class CoreTests {
     sealed class FakeDesktop : ICodexDesktop {
         public int Calls; public string Last; public bool Accept = true;
+        public readonly List<string> History = new List<string>();
         public bool Focus(out string error) { error = null; return true; }
-        public bool Shortcut(string chord, out string error) { Calls++; Last = chord; error = Accept ? null : "focus refused"; return Accept; }
+        public bool Shortcut(string chord, out string error) { Calls++; Last = chord; History.Add(chord); error = Accept ? null : "focus refused"; return Accept; }
         public void OpenThread(string url) { throw new Exception("Unexpected target navigation"); }
     }
     [DllImport("winsqlite3.dll", CallingConvention=CallingConvention.Cdecl)] static extern int sqlite3_open_v2(byte[] path, out IntPtr database, int flags, IntPtr vfs);
@@ -145,7 +146,10 @@ class CoreTests {
             var fake = new FakeDesktop(); string submitMessage;
             Check(!DraftSubmission.Request(fake, codex, true, false, out submitMessage) && fake.Calls == 0, "recording must finish before any send command");
             Check(!DraftSubmission.Request(fake, codex, false, true, out submitMessage) && fake.Calls == 0, "detection mode cannot submit a draft");
-            Check(DraftSubmission.Request(fake, codex, false, false, out submitMessage) && fake.Calls == 1 && fake.Last == "Ctrl+Alt+Shift+F12", "explicit request dispatches the dedicated submit command once");
+            Check(DraftSubmission.Request(fake, codex, false, false, out submitMessage) && fake.Calls == 2 && fake.History.SequenceEqual(new[] {"Alt+L","Ctrl+Alt+Shift+F12"}), "explicit request focuses the composer before dispatching the dedicated submit command once");
+            File.WriteAllText(bindingPath, once.TrimEnd().TrimEnd(']') + ",{\"command\":\"focusMainChat\",\"key\":null}]");
+            Check(!DraftSubmission.Request(fake, codex, false, false, out submitMessage) && fake.Calls == 2, "disabled composer focus prevents submission without sending any keys");
+            File.WriteAllText(bindingPath, once);
             fake.Accept = false;
             Check(!DraftSubmission.Request(fake, codex, false, false, out submitMessage) && submitMessage == "focus refused", "foreground refusal is returned without fallback keys");
             Check(File.ReadAllText(bindingPath) == once, "idempotent shortcut install");

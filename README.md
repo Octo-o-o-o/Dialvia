@@ -5,7 +5,7 @@
 
 Turn a USB handset into a small Codex control surface: dial a number to open a chat, start voice dictation, and receive a task notification. **Plantronics Calisto P240 is the first and currently the only implemented device adapter.**
 
-> **0.1.0-alpha.5** — fixes the observed P240 active-call green key, which Hub reports as raw 3 (`VolumeUpHeld`). The user confirmed start, green-key stop and draft text now work, alongside continuous native browsing. 97 core assertions pass; handset submission is still pending acceptance. See [validation](docs/validation.md).
+> **0.1.0-alpha.5** — fixes the observed P240 active-call green key, which Hub reports as raw 3 (`VolumeUpHeld`). The user confirmed start, green-key stop and draft text now work, alongside continuous native browsing. 98 core assertions pass; handset submission is still pending acceptance. See [validation](docs/validation.md).
 
 ![Dialvia control center with fictional demo projects](assets/screenshots/projects.png)
 
@@ -45,6 +45,8 @@ The P240 buffers digits locally. Enter a code, then press the green key to submi
 Project bindings open existing chats; they do not create new projects or chats. Dictation produces a draft for you to review and send. Finish a recording before changing targets. The controller focuses Codex before voice shortcuts and preserves an already-maximized window.
 
 For a complete handset dictation flow: `0` + green starts, green again (or `*0` + green) stops, then wait for the text, review it and use **`00` + green** to send. Setup binds Codex's dedicated `composer.submit` command, defaulting to `Ctrl+Alt+Shift+F12`; there is no generic Enter fallback. Sending is refused while Dialvia still tracks a recording or when the submit binding is missing, disabled or conflicting. A new binding may need a Codex restart to load. The native command retains Codex's own empty-draft/disabled-submit behavior and configured follow-up behavior.
+
+Submission first focuses the native main composer and lets focus settle. The tray reports that the shortcut was sent; it cannot acknowledge that Codex actually submitted the draft. Test a newly installed binding after reopening Codex and when the chat can accept submission. Ordinary submit may do nothing while the current task is in a stop/disabled-submit state; Dialvia does not bypass that behavior.
 
 If Codex has already stopped recording but the controller still reports recording, use **Codex 已停止：校正状态** in voice settings/the tray after checking the UI. This resets handset tracking without sending a shortcut.
 

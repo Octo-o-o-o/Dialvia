@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 namespace Dialvia {
     public static class UserIntegration {
@@ -118,11 +119,13 @@ namespace Dialvia {
         public static bool Request(ICodexDesktop codex, string codexHome, bool recording, bool detection, out string message) {
             if (recording) { message = "请先按绿色键或 *0＋绿键结束听写，等文字出现后再按 00＋绿键发送。"; return false; }
             try {
-                string chord = UserIntegration.SubmitShortcut(codexHome);
+                string chord = UserIntegration.SubmitShortcut(codexHome), focus = UserIntegration.FocusComposerShortcut(codexHome);
                 if (detection) { message = "检测成功：发送当前草稿 → " + chord; return false; }
                 string error;
+                if (!codex.Shortcut(focus, out error)) { message = error; return false; }
+                Thread.Sleep(180);
                 if (!codex.Shortcut(chord, out error)) { message = error; return false; }
-                message = "已触发 Codex 的发送草稿操作，请查看会话。"; return true;
+                message = "已发送草稿提交快捷键；请确认消息是否出现在 Codex 会话中。"; return true;
             } catch (Exception error) { message = error.Message; return false; }
         }
     }
