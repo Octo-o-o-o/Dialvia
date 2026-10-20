@@ -1,0 +1,13 @@
+/build/
+/dist/
+/artifacts/
+*.user
+*.suo
+*.log
+*.previous
+*.request
+config.local.json
+local/
+.vs/
+.DS_Store
+Thumbs.db

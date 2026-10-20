@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "device": "plantronics-p240",
+  "dryRun": true,
+  "voiceMode": "dictation",
+  "sessionRouting": "recent",
+  "recentProjectPath": "",
+  "voiceEnabled": true,
+  "balloonNotifications": true,
+  "ringNotifications": false,
+  "shortcuts": {
+    "dictate": "Ctrl+Alt+Shift+F8",
+    "start": "Ctrl+Alt+Shift+F9",
+    "end": "Ctrl+Alt+Shift+F10",
+    "mute": "Ctrl+Alt+Shift+F11"
+  },
+  "sessions": {},
+  "projects": {}
+}

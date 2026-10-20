@@ -1,0 +1,72 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Runtime.InteropServices;
+
+namespace Dialvia {
+    public static class ShortcutKeys {
+        public static ushort[] Parse(string chord) {
+            if (String.IsNullOrWhiteSpace(chord)) throw new ArgumentException("Empty shortcut.");
+            var keys = new List<ushort>(); bool functionKey = false;
+            foreach (string token in chord.Split('+')) {
+                ushort key;
+                switch (token.ToUpperInvariant()) {
+                    case "CTRL": key = 0x11; break; case "ALT": key = 0x12; break; case "SHIFT": key = 0x10; break;
+                    default: int number;
+                        if (!token.StartsWith("F", StringComparison.OrdinalIgnoreCase) || !Int32.TryParse(token.Substring(1), out number) || number < 1 || number > 24 || functionKey)
+                            throw new ArgumentException("Use Ctrl/Alt/Shift plus one F1–F24 key.");
+                        key = (ushort)(0x6f + number); functionKey = true; break;
+                }
+                if (keys.Contains(key)) throw new ArgumentException("Duplicate shortcut key."); keys.Add(key);
+            }
+            if (!functionKey || keys.Count < 2) throw new ArgumentException("Shortcut requires a modifier and one function key.");
+            return keys.ToArray();
+        }
+    }
+    public interface ICodexDesktop { bool Shortcut(string chord, out string error); void OpenThread(string url); }
+    public sealed class CodexDesktop : ICodexDesktop {
+        [StructLayout(LayoutKind.Sequential)] struct Input { public uint type; public InputUnion data; }
+        [StructLayout(LayoutKind.Explicit)] struct InputUnion { [FieldOffset(0)] public Keyboard keyboard; [FieldOffset(0)] public Mouse mouse; }
+        [StructLayout(LayoutKind.Sequential)] struct Keyboard { public ushort vk, scan; public uint flags, time; public UIntPtr extra; }
+        [StructLayout(LayoutKind.Sequential)] struct Mouse { public int x, y; public uint data, flags, time; public UIntPtr extra; }
+        [DllImport("user32.dll")] static extern uint SendInput(uint count, Input[] inputs, int size);
+        [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+        [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr window);
+        [DllImport("user32.dll")] static extern bool ShowWindowAsync(IntPtr window, int state);
+        [DllImport("user32.dll")] static extern bool IsIconic(IntPtr window);
+        [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
+        public static int NativeInputSize { get { return Marshal.SizeOf(typeof(Input)); } }
+        public void OpenThread(string url) {
+            Guid id;
+            if (!url.StartsWith("codex://threads/", StringComparison.Ordinal) || !Guid.TryParseExact(url.Substring(16), "D", out id))
+                throw new ArgumentException("Only Codex thread links are allowed.");
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        public bool Shortcut(string chord, out string error) {
+            error = null; Process target = null;
+            foreach (Process process in Process.GetProcessesByName("ChatGPT")) {
+                try {
+                    if (process.MainWindowHandle != IntPtr.Zero && process.MainModule.FileName.IndexOf("OpenAI.Codex_", StringComparison.OrdinalIgnoreCase) >= 0) { target = process; break; }
+                } catch { }
+            }
+            if (target == null) { error = "请先打开 Codex 窗口。"; return false; }
+            // SW_RESTORE also unmaximizes a normal visible window. Restore only when minimized.
+            if (IsIconic(target.MainWindowHandle)) ShowWindowAsync(target.MainWindowHandle, 9);
+            SetForegroundWindow(target.MainWindowHandle);
+            uint pid; GetWindowThreadProcessId(GetForegroundWindow(), out pid);
+            if (pid != target.Id) { error = "请先点击 Codex 窗口，再按话机键。"; return false; }
+            foreach (int modifier in new[] {0x10, 0x11, 0x12, 0x5b, 0x5c})
+                if ((GetAsyncKeyState(modifier) & 0x8000) != 0) { error = "请松开键盘修饰键后重试。"; return false; }
+            ushort[] keys = ShortcutKeys.Parse(chord); var inputs = new List<Input>();
+            foreach (ushort key in keys) inputs.Add(new Input { type = 1, data = new InputUnion { keyboard = new Keyboard { vk = key } } });
+            for (int i = keys.Length - 1; i >= 0; i--) inputs.Add(new Input { type = 1, data = new InputUnion { keyboard = new Keyboard { vk = keys[i], flags = 2 } } });
+            if (SendInput((uint)inputs.Count, inputs.ToArray(), NativeInputSize) != inputs.Count) {
+                Input[] releases = inputs.Skip(keys.Length).ToArray(); SendInput((uint)releases.Length, releases, NativeInputSize);
+                error = "Windows 未完整接收快捷键。"; return false;
+            }
+            AppPaths.Log("SHORTCUT " + chord); return true;
+        }
+    }
+}

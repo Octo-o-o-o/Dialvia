@@ -1,0 +1,89 @@
+<p align="center"><img src="assets/brand/dialvia-icon.svg" width="112" alt="Dialvia 图标" /></p>
+<h1 align="center">Dialvia</h1>
+<p align="center">用手边的实体设备，操作 Windows 上的 Codex。</p>
+<p align="center"><a href="README.md">English</a> · <a href="https://github.com/Octo-o-o-o/Dialvia/releases">下载 Windows 版</a></p>
+
+Dialvia 把 USB 听筒上的拨号键、接听键和挂机键接到 Codex：按编号切换会话／项目，开启语音输入，接收任务完成提示。
+
+**首个适配器是缤特力 Plantronics Calisto P240，目前只对这一个型号提供支持。** 名字不限定型号，代码保留 `IDeviceAdapter` 扩展接口；其他 Poly／Plantronics 设备、普通 HID 键盘等需要单独适配和实机测试。
+
+![Dialvia 控制中心，使用虚构项目演示](assets/screenshots/projects.png)
+
+日常配置使用图形界面；JSON 仅保留为高级入口。图中会话与项目均为虚构演示数据。
+
+## 安装与首次配置
+
+1. 安装 Windows 版 Codex，并单独安装 **Plantronics Hub**，插入 P240。开发设备使用 Hub 3.25.2。系统能播放／录音，并不意味着数字键的完整控制接口已启用。
+2. 在 [Releases](https://github.com/Octo-o-o-o/Dialvia/releases) 下载并解压 Windows x64 包，从资源管理器运行 `Dialvia.exe`。程序依赖 Windows 的 .NET Framework 4.8 和 Hub，不需要额外安装 .NET SDK；Hub 安装包不随本项目分发。EXE 尚未数字签名。
+3. 单击托盘图标打开控制中心，在 **会话与项目** 选择本机项目，按需固定项目编号。可从最近会话列表直接添加绑定，也能手动粘贴 `codex://threads/会话UUID`。公开包映射为空，默认处于检测模式。
+4. 在 **语音与通知** 选择听写或实时语音；到 **启动与集成** 配置语音快捷键，再从概览或托盘菜单关闭检测模式。若新快捷键没有响应，等其他任务空闲再重开 Codex。
+5. 如需登录自启，在 **启动与集成** 点击“安装并开启自启”，或运行 `Install.cmd`。以当前用户安装，不需要管理员权限。开始菜单新增 Dialvia 入口，托盘菜单也可开关自启。
+6. 如需任务通知，先确定 EXE 的固定位置，再点“配置任务完成通知”，到 Codex 的 Hooks 管理中首次审阅并信任 **Dialvia task notification**。
+
+托盘图标可能在 Windows 右下角“显示隐藏的图标”里。不要与此前的个人版 P240 控制器同时运行，两者都会申请 Hub 默认软电话。个人版仍保留在原处，可先退出它再试用 Dialvia；私有会话编号不会上传仓库。
+
+## 按键
+
+P240 先在话机内缓存数字，按绿色键才提交。它并非每按一个数字就立即切换。
+
+| 操作 | 作用 |
+|---|---|
+| `1`–`9`＋绿色键 | 选择当前列表前九条最近会话；固定模式则打开固定会话，也支持 `#1`–`#9` |
+| `*1`–`*9`＋绿色键 | 打开项目预设会话，也支持 `11`–`19` |
+| `*#`＋绿色键 | 打开最近会话浏览器 |
+| `*`／`#`＋绿色键 | 在浏览器中选上一条／下一条 |
+| 浏览器内空白绿色键／红键 | 进入所选会话／收起浏览器 |
+| `0`＋绿色键，或浏览器外空白绿色键 | 开启所选语音模式 |
+| 话机语音中按红键，或 `*0`＋绿色键 | 停止该次语音 |
+| `#0`＋绿色键 | 实时语音对话的麦克风静音切换 |
+| 拨号时按红键 | 清空尚未提交的数字 |
+| 原有音量／静音键 | 保留设备音频操作 |
+
+项目编号指向已有会话，不会创建新的项目或会话。录音结束后再切换目标。控制器聚焦 Codex 时保留最大化状态，只对已最小化的窗口执行恢复。
+
+## 会话为什么不默认固定编号
+
+推荐 **项目固定编号，会话按项目内最近活跃排列**。打开浏览器后顺序保持不变，刷新或切换项目时才重新排序，避免每进入一条会话就改变编号。标题旁显示今天／昨天／日期，日期用来辨认，不要求记住日期拨号。确实长期使用的会话仍可选择固定编号模式。
+
+浏览器支持键盘上／下选择会话，左／右切换项目，Enter 确认、Esc 收起。小米遥控器项目的调研与取舍见 [交互设计记录](docs/navigation.md)。本机 P240 的中央上下键在 SDK 与只读 USB 检测中都没有可用输入，首版不映射；侧键继续调音量。新增符号浏览拨号入口仍需实机验收。
+
+本机最近列表通过只读连接读取 Codex 索引中的 ID、标题、项目目录与活跃时间，最多 200 条未归档会话，不读取聊天正文。该索引并非稳定公开 API，格式变化时可退回手动会话链接。
+
+## 语音使用什么服务
+
+默认是 **Codex 自带的听写**：P240 提供麦克风，Codex 采集音频并用已登录账号的 ChatGPT/Codex 转写服务生成文字草稿，再由你确认发送。Dialvia 只发送开始／结束快捷键，不配置另一个 STT 服务，不需要额外 API Key。
+
+本机检查到客户端使用 `/dictation/stream` 流式接口，没有公开确切的转写模型名称，因此不把它标为某个 Whisper 或 GPT 模型。实时语音对话是另一种 Codex 功能，其可用性受账号、版本和当前任务影响。详见 [语音说明](docs/voice.md) 与 [官方文档](https://learn.chatgpt.com/docs/features/voice)。
+
+设置中的“选择 Windows 麦克风和声音输出”打开系统声音页。选择 P240 输入／输出后，仍以 Codex 自己选择的音频设备为优先；程序不强制更改全局默认设备。
+
+## 通知
+
+弹窗默认开启，听筒短铃默认关闭。可手动测试；检测模式及由 Dialvia 跟踪的语音期间不响铃。
+
+任务完成通知使用异步 Stop hook：执行 `Dialvia.exe --notify`，把“Codex 已完成回复”写入本地短期队列。它无需 PowerShell 通知脚本，保留既有 `config.toml` 的 `notify` 配置。**首次 Hooks 审阅／信任仍需在 Codex 完成**，见 [官方 Hooks 说明](https://learn.chatgpt.com/docs/hooks)。
+
+## 版本与验证边界
+
+首版为 **0.1.0-alpha.1**。此前同一 P240 的控制链路已有用户确认：数字切换项目／会话成功，录音和文字草稿成功。独立项目通过 41 项核心断言，包含配置、最近列表稳定顺序、只读索引、快捷键冲突和卸载归属检查，以及不抢占默认软电话的设备发现探测。GUI 使用演示数据做了布局检查。
+
+完整实时语音、实际短铃、首次信任后的真实任务通知尚需实机验收；不宣称所有设备或所有语音模式都已通过。当前没有 Anyvia 产品接入，Anyvia 属于后续方向。见 [验证记录](docs/validation.md)。
+
+## 开发
+
+```powershell
+git clone https://github.com/Octo-o-o-o/Dialvia.git
+cd Dialvia
+.\scripts\Test.ps1
+.\scripts\Build.ps1
+```
+
+使用普通 Windows 终端和当前脚本执行策略，不需要修改系统安全设置。构建会从已安装的 `PlantronicsCOM.dll` 生成托管接口 DLL，和带图标的 EXE 一同打包。解压后请保留 EXE 与 `Interop.Plantronics.dll` 在同一目录。生成结果在 `dist`，详见 [构建说明](docs/build.md)。
+
+配置及日志在 `%LOCALAPPDATA%\Dialvia`，通知队列在 `Documents\Codex\Dialvia\notifications`。运行 `Uninstall.cmd` 移除自启动及本程序拥有、且未被用户修改的快捷键／Hook，保留数据和 Hub。
+
+## 名字与图标
+
+Dialvia 的 “Dial” 对应拨号操作，“via” 对应进入现有工具的通路，也与 Anyvia 呼应。图标使用 Anyvia 的纸白、墨黑、铜色系统，重新设计开放的 D 形笔画，SVG、PNG 和多尺寸 ICO 同源构建，已嵌入 EXE 和托盘。
+
+代码与原创图标采用 [MIT](LICENSE)。这是独立社区项目，非 OpenAI、HP、Poly 或 Plantronics 官方软件。见 [第三方说明](THIRD-PARTY-NOTICES.md)。
