@@ -12,6 +12,8 @@ namespace Dialvia {
         public static Color Border { get { return SystemInformation.HighContrast ? SystemColors.WindowText : ColorTranslator.FromHtml("#DFE0D8"); } }
         public static Color Copper { get { return SystemInformation.HighContrast ? SystemColors.Highlight : ColorTranslator.FromHtml("#A15135"); } }
         public static Color Soft { get { return SystemInformation.HighContrast ? SystemColors.Window : ColorTranslator.FromHtml("#EEE9DF"); } }
+        public static Color Selection { get { return SystemInformation.HighContrast ? SystemColors.Highlight : Soft; } }
+        public static Color SelectionText { get { return SystemInformation.HighContrast ? SystemColors.HighlightText : Copper; } }
         public static readonly Font Ui = new Font("Segoe UI", 10);
         public static void Apply(Form form) {
             form.Font = Ui; form.BackColor = Paper; form.ForeColor = Ink; form.Icon = Program.AppIcon;
@@ -53,13 +55,13 @@ namespace Dialvia {
             e.Graphics.Clear(Parent == null ? DesktopTheme.Paper : Parent.BackColor); e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             if (Width < 4 || Height < 4) return;
             Color background = !Enabled ? DesktopTheme.Soft : primary ? DesktopTheme.Copper : hovered ? DesktopTheme.Soft : DesktopTheme.Surface;
-            Color foreground = primary && Enabled ? Color.White : DesktopTheme.Ink;
+            Color foreground = !Enabled ? (SystemInformation.HighContrast ? SystemColors.GrayText : DesktopTheme.Muted) : primary ? (SystemInformation.HighContrast ? SystemColors.HighlightText : Color.White) : DesktopTheme.Ink;
             using (var path = DesktopTheme.Rounded(new Rectangle(1, 1, Width - 3, Height - 3), 10))
             using (var fill = new SolidBrush(background)) using (var border = new Pen(primary ? DesktopTheme.Copper : DesktopTheme.Border)) {
                 e.Graphics.FillPath(fill, path); e.Graphics.DrawPath(border, path);
             }
             TextRenderer.DrawText(e.Graphics, Text, Font, ClientRectangle, foreground, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
-            if (Focused && ShowFocusCues) { Rectangle bounds = ClientRectangle; bounds.Inflate(-6, -6); ControlPaint.DrawFocusRectangle(e.Graphics, bounds); }
+            if (Focused && ShowFocusCues) { Rectangle bounds = ClientRectangle; bounds.Inflate(-6, -6); ControlPaint.DrawFocusRectangle(e.Graphics, bounds, foreground, background); }
         }
     }
     public sealed class BrandComboBox : ComboBox {

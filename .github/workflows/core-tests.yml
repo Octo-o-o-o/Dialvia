@@ -15,3 +15,6 @@ jobs:
       - name: Rebuild vector brand exports
         shell: pwsh
         run: ./scripts/Build-Brand.ps1
+      - name: Validate transparent native icon frames
+        shell: pwsh
+        run: ./scripts/Test-Brand.ps1

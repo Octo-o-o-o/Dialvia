@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using System.Diagnostics;
+using Microsoft.Win32;
 
 namespace Dialvia {
     public sealed class ControllerForm : Form {
@@ -11,6 +12,8 @@ namespace Dialvia {
         readonly ICodexDesktop codex;
         IDeviceAdapter adapter;
         NotifyIcon tray;
+        Icon trayAsset;
+        int trayPixels; bool trayDark;
         SettingsWindow settingsWindow;
         SessionBrowserWindow browser;
         SessionSnapshot recentSnapshot;
@@ -31,7 +34,10 @@ namespace Dialvia {
             base.OnLoad(e);
             try { settings = SettingsStore.Load(AppPaths.Config); }
             catch (Exception ex) { MessageBox.Show(ex.Message + "\n" + AppPaths.Config, "Dialvia 配置错误"); Close(); return; }
-            tray = new NotifyIcon { Icon = Program.AppIcon, Text = "Dialvia · Codex", Visible = true };
+            tray = new NotifyIcon { Text = "Dialvia · Codex" };
+            UpdateTrayAppearance(); tray.Visible = true;
+            SystemEvents.UserPreferenceChanged += TrayPreferenceChanged;
+            SystemEvents.DisplaySettingsChanged += TrayDisplayChanged;
             activeProjectPath = settings.recentProjectPath;
             var menu = new ContextMenuStrip { BackColor = DesktopTheme.Surface, ForeColor = DesktopTheme.Ink, Font = DesktopTheme.Ui };
             var state = menu.Items.Add(deviceStatus); state.Enabled = false;
@@ -94,6 +100,19 @@ namespace Dialvia {
             if (text.Length > 180) text = text.Substring(0, 180);
             if (tray != null && settings.balloonNotifications) { tray.BalloonTipTitle = "Dialvia"; tray.BalloonTipText = text; tray.ShowBalloonTip(2500); }
         }
+        void UpdateTrayAppearance() {
+            int size = TrayAppearance.IconSize; bool dark = TrayAppearance.Dark;
+            if (trayAsset != null && trayPixels == size && trayDark == dark) return;
+            Icon next = TrayAppearance.CreateIcon(dark, size), previous = trayAsset;
+            tray.Icon = next; trayAsset = next; if (previous != null) previous.Dispose();
+            trayPixels = size; trayDark = dark; AppPaths.Log("TRAY_ICON size=" + size + " dark=" + dark);
+        }
+        void ScheduleTrayAppearance() {
+            if (IsDisposed || !IsHandleCreated) return;
+            try { BeginInvoke(new Action(delegate { if (!IsDisposed && tray != null) UpdateTrayAppearance(); })); } catch (InvalidOperationException) { }
+        }
+        void TrayPreferenceChanged(object sender, UserPreferenceChangedEventArgs e) { ScheduleTrayAppearance(); }
+        void TrayDisplayChanged(object sender, EventArgs e) { ScheduleTrayAppearance(); }
         void DeviceAction(Action action) { try { action(); } catch (Exception ex) { AppPaths.Log("DEVICE_ACTION " + ex.Message); } }
         bool Once(string action) {
             DateTime now = DateTime.UtcNow;
@@ -283,9 +302,12 @@ namespace Dialvia {
             closing = true; base.OnFormClosing(e);
         }
         protected override void OnFormClosed(FormClosedEventArgs e) {
+            SystemEvents.UserPreferenceChanged -= TrayPreferenceChanged;
+            SystemEvents.DisplaySettingsChanged -= TrayDisplayChanged;
             foreach (Timer timer in new[] { reconnect, talkDelay, inboxTimer, ringTimer, voiceStartDelay }) if (timer != null) timer.Dispose();
             if (browser != null) browser.Dispose(); if (settingsWindow != null) settingsWindow.Dispose();
             if (adapter != null) adapter.Dispose(); if (tray != null) { tray.Visible = false; tray.Dispose(); }
+            if (trayAsset != null) trayAsset.Dispose();
             base.OnFormClosed(e);
         }
     }

@@ -15,11 +15,12 @@ using Microsoft.Win32;
 [assembly: AssemblyCompany("Dialvia contributors")]
 [assembly: AssemblyProduct("Dialvia")]
 [assembly: AssemblyVersion("0.1.0.0")]
-[assembly: AssemblyFileVersion("0.1.0.5")]
-[assembly: AssemblyInformationalVersion("0.1.0-alpha.5")]
+[assembly: AssemblyFileVersion("0.1.0.6")]
+[assembly: AssemblyInformationalVersion("0.1.0-alpha.6")]
 
 namespace Dialvia {
     public static class Program {
+        public const string Version = "0.1.0-alpha.6";
         static Mutex instance;
         static Icon icon;
         static Bitmap brandImage;
@@ -30,10 +31,13 @@ namespace Dialvia {
         public static string Executable { get { return Assembly.GetExecutingAssembly().Location; } }
         public static Icon AppIcon {
             get {
-                if (icon == null) using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Dialvia.AppIcon"))
-                    using (var value = new Icon(stream, 32, 32)) icon = (Icon)value.Clone();
+                if (icon == null) icon = LoadIcon("Dialvia.AppIcon", SystemInformation.IconSize.Width);
                 return icon;
             }
+        }
+        public static Icon LoadIcon(string resource, int size) {
+            using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resource))
+                using (var value = new Icon(stream, size, size)) return (Icon)value.Clone();
         }
         [STAThread] public static int Main(string[] args) {
             try { return Run(args); }
@@ -46,6 +50,7 @@ namespace Dialvia {
         [MethodImpl(MethodImplOptions.NoInlining)] static int Run(string[] args) {
             if (args.Length > 0 && args[0] == "--notify") return Notifications.FromHook();
             if (args.Length == 2 && args[0] == "--render-preview") { GuiPreview.Render(Path.GetFullPath(args[1])); return 0; }
+            if (args.Length == 2 && args[0] == "--preview-ui") { GuiPreview.Interactive(args[1]); return 0; }
             if (args.Length == 2 && args[0] == "--inventory-check") {
                 var threads = CodexInventory.Load(AppPaths.CodexHome);
                 AtomicFile.Write(Path.GetFullPath(args[1]), SettingsStore.Json.Serialize(new { threads = threads.Count, readOnly = true })); return 0;
@@ -54,7 +59,10 @@ namespace Dialvia {
                 if (args.Length != 2) throw new ArgumentException("Usage: Dialvia.exe --self-test <report.json>");
                 var settings = new Settings(); SettingsStore.Validate(settings);
                 if (CodexDesktop.NativeInputSize != 40 || DialCode.Kind("*2") != "project" || DialCode.Kind("1;calc") != "unknown") throw new Exception("Self-test failed.");
-                AtomicFile.Write(Path.GetFullPath(args[1]), "{\"passed\":true,\"inputSize\":40,\"version\":\"0.1.0-alpha.5\"}"); return 0;
+                using (Icon light = TrayAppearance.CreateIcon(false, 24)) using (Icon dark = TrayAppearance.CreateIcon(true, 24)) {
+                    if (light.Width != 24 || dark.Width != 24) throw new Exception("Tray icon resource size mismatch.");
+                }
+                AtomicFile.Write(Path.GetFullPath(args[1]), SettingsStore.Json.Serialize(new {passed=true,inputSize=40,version=Version,traySize=TrayAppearance.IconSize,trayDark=TrayAppearance.Dark})); return 0;
             }
             if (args.Length > 0 && args[0] == "--probe-device") {
                 if (args.Length != 2) throw new ArgumentException("Usage: Dialvia.exe --probe-device <report.json>");
@@ -106,6 +114,7 @@ namespace Dialvia {
         }
     }
     public static class Installer {
+        [DllImport("shell32.dll", CharSet=CharSet.Unicode)] static extern void SHChangeNotify(uint change, uint flags, string first, IntPtr second);
         const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
         static string StartupCommand { get { return "\"" + Path.Combine(AppPaths.Data, "Dialvia.exe") + "\""; } }
         public static bool AutoStartEnabled {
@@ -134,6 +143,8 @@ namespace Dialvia {
             shortcut.GetType().InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, shortcut, new object[] {AppPaths.Data});
             shortcut.GetType().InvokeMember("Save", BindingFlags.InvokeMethod, null, shortcut, null);
             Marshal.FinalReleaseComObject(shortcut); Marshal.FinalReleaseComObject(shell);
+            SHChangeNotify(0x00002000, 0x0005, destination, IntPtr.Zero);
+            SHChangeNotify(0x00002000, 0x0005, shortcutPath, IntPtr.Zero);
         }
         public static void Uninstall() {
             AtomicFile.Write(Path.Combine(AppPaths.Data, "stop.request"), "");

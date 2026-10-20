@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "viewBox": "209 190 620 620",
+  "transparent": true,
+  "glyphHeightFraction": 0.9225806451612903,
+  "sizes": [
+    16,
+    20,
+    24,
+    30,
+    32,
+    36,
+    40,
+    48,
+    60,
+    64,
+    72,
+    80,
+    96,
+    128,
+    256
+  ],
+  "shell": "dialvia.ico",
+  "trayLight": "dialvia-tray-light.ico",
+  "trayDark": "dialvia-tray-dark.ico",
+  "brand": "dialvia-mark.svg"
+}

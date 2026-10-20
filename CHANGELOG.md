@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-alpha.6 — 2026-10-21
+
+- Remove the icon background plate and enlarge the original D artwork from 57% to 92% of canvas height. Provide separate shell, light-tray and dark-tray resources at 15 native ICO sizes, plus transparent SVG/PNG exports.
+- Select the tray resource from taskbar DPI/theme and refresh on display/preferences changes. Refresh only the installed EXE/shortcut shell entries during installation.
+- Improve disabled/focus states, accessible input names, responsive binding columns and long-title tooltips. Save is enabled only for changed settings; Ctrl+S saves and Esc closes.
+- Add a fixed save/cancel bar and Chinese validation in the binding editor; add explicit empty/error states and prevent dropdown Enter from opening a chat.
+- Add reproducible checks for 45 icon frames/3 SVGs and 13 fictional UI states. Native fixture checks covered all settings pages, cancel, validation, dropdown Esc and save state at 150% Windows scaling.
+- Retain the existing handset controls and known acceptance limits; this is a visual/UI update, not new hardware or submission acceptance.
+
 ## 0.1.0-alpha.5 — 2026-10-20
 
 - Fix the observed P240 green-key stop route: raw 7 while idle, raw 3 during the controller's local call. Only active controller voice can use the compatibility stop.

@@ -5,7 +5,7 @@
 
 Turn a USB handset into a small Codex control surface: dial a number to open a chat, start voice dictation, and receive a task notification. **Plantronics Calisto P240 is the first and currently the only implemented device adapter.**
 
-> **0.1.0-alpha.5** — fixes the observed P240 active-call green key, which Hub reports as raw 3 (`VolumeUpHeld`). The user confirmed start, green-key stop and draft text now work, alongside continuous native browsing. 98 core assertions pass; handset submission is still pending acceptance. See [validation](docs/validation.md).
+> **0.1.0-alpha.6** — larger transparent artwork, adaptive light/dark tray icons, and a control-center refresh. Validated 45 native icon frames, 13 fixture UI states and 98 core assertions. Previous handset dictation/browsing acceptance is retained; submission remains pending. See [visual design](docs/visual-design.md) and [validation](docs/validation.md).
 
 ![Dialvia control center with fictional demo projects](assets/screenshots/projects.png)
 
@@ -85,7 +85,7 @@ See [Codex voice](https://learn.chatgpt.com/docs/features/voice), [commands and 
 | Anyvia | Feasible future integration; not implemented here |
 | macOS / Linux | Not supported by this release |
 
-**Why Dialvia?** “Dial” describes the first handset interaction; “via” describes a route into an existing tool and echoes the owner's Anyvia project. The device-neutral `IDeviceAdapter` boundary leaves room for other hardware, while the support table names what actually works. The original D icon uses Anyvia's paper/ink/copper palette with its own geometry.
+**Why Dialvia?** “Dial” describes the first handset interaction; “via” describes a route into an existing tool and echoes the owner's Anyvia project. The device-neutral `IDeviceAdapter` boundary leaves room for other hardware, while the support table names what actually works. The original D icon uses Anyvia's paper/ink/copper palette with its own geometry. All icon backgrounds are transparent; the tray selects an ink or ivory mark from the Windows taskbar theme. [Asset sizes and UI checks](docs/visual-design.md).
 
 ## Build and test
 
@@ -98,11 +98,11 @@ cd Dialvia
 .\scripts\Build.ps1      # Requires the installed Plantronics COM type library
 ```
 
-`Build.ps1` runs the core tests, regenerates SVG/PNG/ICO assets, imports local COM metadata into an adjacent managed DLL, embeds the icon, then creates:
+`Build.ps1` runs the core and brand checks, regenerates transparent SVG/PNG/ICO assets, imports local COM metadata into an adjacent managed DLL, embeds shell/brand/light-tray/dark-tray resources, then creates:
 
 ```text
 dist/Dialvia-win-x64/Dialvia.exe
-dist/Dialvia-0.1.0-alpha.5-win-x64.zip
+dist/Dialvia-0.1.0-alpha.6-win-x64.zip
 dist/SHA256SUMS.txt
 ```
 
