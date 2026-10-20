@@ -27,6 +27,8 @@ The [P240 user guide](https://kaas.hpcloud.hp.com/pdf-public/pdf_9651782_en-US-1
 
 This does not prove that every P240 firmware behaves identically. It does mean this release must not promise central-arrow navigation or repurpose audio volume based on an unobserved event. Future adapters can expose explicit navigation events after model-specific tests.
 
+Later controlled alpha.5 testing established that the green key during a local call is reported as raw 3 (`VolumeUpHeld`) in this setup. This is now an optional, scoped voice-stop compatibility path, with ordinary volume-gesture protection and an explicit caveat for indistinguishable standalone holds. See [voice behavior](voice.md). It does not establish central-scroll or long-press star/hash support.
+
 The user confirmed alpha.1 popup opening and downward selection, but idle red did not close it. No red button appeared in that button log. Numeric exit is therefore the documented reliable path; SDK button/call-end feedback is best-effort. Additional call-state logging and active-call end variants help diagnose red without treating app-generated display-clear events as user exit. Dialvia does not hold a fake voice call open merely to arm red, which could change keypad/audio behavior.
 
 Long-press star/hash is not implemented. The exposed idle dial interface buffers a whole string until green and provides no reliable press/release timing. Repeated characters cannot safely establish a held button. Green submission remains necessary for numeric navigation.

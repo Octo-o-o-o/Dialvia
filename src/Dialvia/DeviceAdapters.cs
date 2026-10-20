@@ -7,7 +7,6 @@ using System.Windows.Forms;
 using Interop.Plantronics;
 
 namespace Dialvia {
-    public enum DeviceButton { ToggleVoice, StartVoice, EndVoice }
     public interface IDeviceAdapter : IDisposable {
         event Action<string> DialRequested;
         event Action<DeviceButton> ButtonPressed;
@@ -28,6 +27,7 @@ namespace Dialvia {
         ICOMSessionManagerEvents_Event managerEvents;
         string previousSoftphone; bool changingCall, disposed;
         int nextCallId = 240;
+        readonly P240ButtonPolicy buttons = new P240ButtonPolicy();
         public event Action<string> DialRequested;
         public event Action<DeviceButton> ButtonPressed;
         public event Action<string> StatusChanged;
@@ -75,10 +75,8 @@ namespace Dialvia {
             DeviceHeadsetButton button = value.HeadsetButton;
             Ui(delegate {
                 AppPaths.Log("BUTTON " + button + " raw=" + (int)button + " event=" + value.DeviceEventType);
-                if (ButtonPressed == null) return;
-                if (button == DeviceHeadsetButton.HeadsetButton_Talk) ButtonPressed(DeviceButton.ToggleVoice);
-                else if (button == DeviceHeadsetButton.HeadsetButton_OffHook) ButtonPressed(DeviceButton.StartVoice);
-                else if (button == DeviceHeadsetButton.HeadsetButton_OnHook || button == DeviceHeadsetButton.HeadsetButton_Reject) ButtonPressed(DeviceButton.EndVoice);
+                DeviceButton? action = buttons.Translate((int)button, call != null, DateTime.UtcNow);
+                if (action.HasValue && ButtonPressed != null) ButtonPressed(action.Value);
             });
         }
         void OnBaseButton(COMDeviceListenerEventArgs value) {

@@ -40,6 +40,15 @@ class CoreTests {
         var queued = new DeferredGreenPresses(); DateTime origin = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         Check(BareVoiceButton.Action(false, false) == "idle", "unidentified bare green/red cannot start recording while idle");
         Check(BareVoiceButton.Action(false, true) == "stop" && BareVoiceButton.Action(true, false) == "browse", "bare button preserves stop and continuous browsing");
+        var p240 = new P240ButtonPolicy();
+        Check(p240.Translate(7, false, origin) == DeviceButton.ToggleVoice, "observed idle green raw 7 retains normal routing");
+        Check(p240.Translate(3, true, origin.AddSeconds(5)) == DeviceButton.EndVoiceCompatibility, "observed active-call green raw 3 requests a scoped compatibility stop");
+        Check(!p240.Translate(3, false, origin.AddSeconds(6)).HasValue, "raw 3 while idle cannot start or stop voice");
+        Check(!p240.Translate(1, true, origin.AddSeconds(7)).HasValue && !p240.Translate(3, true, origin.AddMilliseconds(7500)).HasValue, "real volume-up followed by held event keeps audio behavior");
+        Check(!p240.Translate(2, true, origin.AddSeconds(8)).HasValue && !p240.Translate(4, true, origin.AddSeconds(8)).HasValue, "volume-down press and hold are not remapped");
+        Check(!p240.Translate(3, true, origin.AddSeconds(9)).HasValue && !p240.Translate(3, true, origin.AddMilliseconds(10500)).HasValue, "repeated real volume holds keep extending their audio gesture window");
+        Check(p240.Translate(3, true, origin.AddSeconds(13)) == DeviceButton.EndVoiceCompatibility, "compatibility green becomes available after the volume gesture window");
+        Check(legacy.p240ActiveTalkCompatibility, "existing P240 settings receive the calibrated compatibility default");
         Check(ShortcutKeys.Parse("Alt+L").SequenceEqual(new ushort[] {0x12, 0x4c}), "native main composer focus chord");
         Check(MicrophoneActivity.FromFileTimes(0, 0).State == CaptureState.Unknown && MicrophoneActivity.FromFileTimes(Int64.MaxValue, 0).State == CaptureState.Unknown, "missing and corrupt capture metadata remain unknown");
         Check(MicrophoneActivity.FromFileTimes(origin.ToFileTimeUtc(), 0).State == CaptureState.Active, "ongoing capture is recognized without accessing audio");

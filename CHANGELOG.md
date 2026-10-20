@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-alpha.5 — 2026-10-20
+
+- Fix the observed P240 green-key stop route: raw 7 while idle, raw 3 during the controller's local call. Only active controller voice can use the compatibility stop.
+- Add the GUI/config compatibility switch and protect real volume-up followed by held-event sequences; document indistinguishable standalone volume holds.
+- The user confirmed start, single-green stop and draft text. Handset submission remains pending acceptance.
+- Expand core checks to 97 assertions, including the actual observed device-event sequence and volume controls.
+
 ## 0.1.0-alpha.4 — 2026-10-20
 
 - Fix premature recording reset: an older inactive microphone record never clears a new start, regardless of elapsed time.

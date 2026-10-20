@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
 
 namespace Dialvia {
+    public enum DeviceButton { ToggleVoice, StartVoice, EndVoice, EndVoiceCompatibility }
     public sealed class Target { public string label; public string url; public string projectPath; }
     public sealed class Settings {
         public int schemaVersion = 1;
@@ -16,6 +17,7 @@ namespace Dialvia {
         public string sendShortcut = "Ctrl+Alt+Shift+F12";
         public string recentProjectPath = "";
         public bool voiceEnabled = true, balloonNotifications = true, ringNotifications = false;
+        public bool p240ActiveTalkCompatibility = true;
         public Dictionary<string, string> shortcuts = new Dictionary<string, string> {
             {"dictate", "Ctrl+Alt+Shift+F8"}, {"start", "Ctrl+Alt+Shift+F9"},
             {"end", "Ctrl+Alt+Shift+F10"}, {"mute", "Ctrl+Alt+Shift+F11"}

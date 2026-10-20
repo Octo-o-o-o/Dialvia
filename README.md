@@ -5,7 +5,7 @@
 
 Turn a USB handset into a small Codex control surface: dial a number to open a chat, start voice dictation, and receive a task notification. **Plantronics Calisto P240 is the first and currently the only implemented device adapter.**
 
-> **0.1.0-alpha.4** — corrects premature recording-state reset and keeps stop requests pending until fresh microphone-stop evidence arrives. Shortcuts now have an 80 ms key hold. 89 core assertions pass. The user confirmed dictation start and smooth repeated-green navigation; revised stop/send acceptance is pending. See [validation](docs/validation.md).
+> **0.1.0-alpha.5** — fixes the observed P240 active-call green key, which Hub reports as raw 3 (`VolumeUpHeld`). The user confirmed start, green-key stop and draft text now work, alongside continuous native browsing. 97 core assertions pass; handset submission is still pending acceptance. See [validation](docs/validation.md).
 
 ![Dialvia control center with fictional demo projects](assets/screenshots/projects.png)
 
@@ -40,7 +40,7 @@ The P240 buffers digits locally. Enter a code, then press the green key to submi
 | Green during handset-started voice, or `*0` + green | Stop that voice session; red is best-effort |
 | `#0` + green | Toggle microphone mute in a Codex voice conversation |
 | Red while dialing | Clear the pending number |
-| Device volume / mute keys | Retain the P240's own audio controls |
+| Device volume / mute keys | Normal audio controls; see the active-call compatibility caveat below |
 
 Project bindings open existing chats; they do not create new projects or chats. Dictation produces a draft for you to review and send. Finish a recording before changing targets. The controller focuses Codex before voice shortcuts and preserves an already-maximized window.
 
@@ -52,13 +52,15 @@ Before dictation, Dialvia invokes Codex's native `focusMainChat` command (defaul
 
 A stop request stays pending until a known microphone-stop timestamp is at or after this recording's start request. An old inactive record never clears a new start, even after a delay. Rapid repeated stop presses are suppressed; a later explicit retry requires evidence of continuing capture. Keyboard press/release are separated by 80 ms for Codex's Windows global-hotkey listener.
 
+**P240 active-call compatibility:** in the observed test, the same green key produced raw 7 (`Talk`) while idle, but raw 3 (`VolumeUpHeld`) during the controller's call. Alpha.5 treats the latter as a stop request only while a local call and controller voice are active. A preceding real volume-up event protects its following hold sequence. A standalone volume hold with the same report remains indistinguishable and may stop recording; disable **P240 通话中接听键兼容** in voice settings if it affects the device. Idle raw 3 never starts voice. This is scoped to the calibrated setup, not every P240/Hub combination.
+
 **Projects keep fixed numbers; handset browsing defaults to Codex's own sidebar order.** It invokes the installed client's `previousThread` / `nextThread` commands and respects supported custom bindings. Each move opens the destination immediately; it does not merely highlight a row for later confirmation. Disabled or conflicting bindings produce an explanation. No extra Codex bindings or restart are required for the default setup.
 
 For repeated browsing, use `#` + green once, then press **green alone** for each next item. To reverse direction, use `*` + green (or `2` + green), then continue with green alone. `22` starts in the downward direction without moving. Rapid green presses are queued separately rather than resetting one debounce timer. Numeric exit cancels pending steps so they cannot start dictation after leaving browsing.
 
 Direct `1`–`9` dialing outside browsing still follows the recent/fixed setting. In optional **Dialvia list** mode, its project-filtered snapshot stays in order until refresh or project change. This local filter does not change native sidebar navigation. The popup shows titles and dates and supports keyboard navigation. [Design and Xiaomi remote research](docs/navigation.md).
 
-The P240's central scroll keys produced no usable SDK or raw USB input in the tested setup; they are not mapped. Side volume keys keep their audio behavior. Idle red-key presses did not close the alpha.1 popup, so **use `5` + green or `23` + green to exit**. Red remains best-effort for call-state events. Long presses of `*` / `#` are not implemented: the available dial-string interface supplies neither reliable press/release timing nor per-digit host events. Numeric codes need green to submit; repeated native browsing uses green alone.
+The P240's central scroll keys produced no usable SDK or raw USB input in the tested setup; they are not mapped. Ordinary side-volume controls retain audio behavior, with the ambiguous held-report caveat described above. Idle red-key presses did not close the alpha.1 popup, so **use `5` + green or `23` + green to exit**. Red remains best-effort for call-state events. Long presses of `*` / `#` are not implemented: the available dial-string interface supplies neither reliable press/release timing nor per-digit host events. Numeric codes need green to submit; repeated native browsing uses green alone.
 
 ## Voice and notifications
 
@@ -98,7 +100,7 @@ cd Dialvia
 
 ```text
 dist/Dialvia-win-x64/Dialvia.exe
-dist/Dialvia-0.1.0-alpha.4-win-x64.zip
+dist/Dialvia-0.1.0-alpha.5-win-x64.zip
 dist/SHA256SUMS.txt
 ```
 

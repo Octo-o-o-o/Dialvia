@@ -8,6 +8,7 @@
   "sendShortcut": "Ctrl+Alt+Shift+F12",
   "recentProjectPath": "",
   "voiceEnabled": true,
+  "p240ActiveTalkCompatibility": true,
   "balloonNotifications": true,
   "ringNotifications": false,
   "shortcuts": {

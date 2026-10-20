@@ -44,7 +44,7 @@ namespace Dialvia {
                 button.FlatAppearance.BorderSize = 0; button.Click += delegate { SelectPage(selected); }; navigation.Add(button); sidebar.Controls.Add(button);
             }
             sidebar.Controls.Add(new Panel { Height = 26, Width = 160 });
-            var sidebarNote = DesktopTheme.Label("P240 首发适配\nWindows x64\n0.1.0-alpha.4", 9, false, true); sidebarNote.MaximumSize = new Size(165, 0); sidebar.Controls.Add(sidebarNote);
+            var sidebarNote = DesktopTheme.Label("P240 首发适配\nWindows x64\n0.1.0-alpha.5", 9, false, true); sidebarNote.MaximumSize = new Size(165, 0); sidebar.Controls.Add(sidebarNote);
             var right = new Panel { Dock = DockStyle.Fill, Padding = new Padding(28, 24, 26, 18), BackColor = DesktopTheme.Paper };
             var header = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 92, FlowDirection = FlowDirection.TopDown, WrapContents = false }; header.Controls.Add(heading); header.Controls.Add(subtitle);
             var bottom = new Panel { Dock = DockStyle.Bottom, Height = 66, Padding = new Padding(0, 14, 0, 0) };
@@ -193,6 +193,9 @@ namespace Dialvia {
             voice.Controls.Add(DesktopTheme.Label("音频设备跟随 Windows / Codex 的选择；不会强制替换系统默认设备。", 9, false, true));
             voice.Controls.Add(DesktopTheme.Label("发送草稿：00＋绿键。先结束听写，等文字出现并检查后再发送。", 9, false, true));
             voice.Controls.Add(DesktopTheme.Label("仅 0＋绿键开始；先聚焦当前聊天输入框。空闲单按绿／红键不会开始录音。", 9, false, true));
+            var compatibility = new CheckBox { Text = "P240 通话中接听键兼容", Checked = draft.p240ActiveTalkCompatibility, AutoSize = true, Margin = new Padding(0, 6, 0, 6) };
+            compatibility.CheckedChanged += delegate { draft.p240ActiveTalkCompatibility = compatibility.Checked; Changed(); }; voice.Controls.Add(compatibility);
+            voice.Controls.Add(DesktopTheme.Label("适用于按接听键无法结束录音的 P240；若长按音量＋误停，可关闭此项。", 9, false, true));
             voice.Controls.Add(DesktopTheme.Label("界面已经停止录音、话机仍提示录音时，可校正状态；该操作不发送键盘快捷键。", 9, false, true));
             var notification = Card(page, "完成时提醒我", "任务通知只显示通用完成提示，保持你的内容留在 Codex。");
             var balloons = new CheckBox { Text = "显示操作与完成通知", Checked = draft.balloonNotifications, AutoSize = true, Margin = new Padding(0, 4, 0, 12) };

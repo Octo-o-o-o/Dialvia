@@ -72,6 +72,9 @@ namespace Dialvia {
             adapter.StatusChanged += delegate(string status) { deviceStatus = status; string tip = "Dialvia · " + status; tray.Text = tip.Length > 63 ? tip.Substring(0, 63) : tip; };
             adapter.ButtonPressed += delegate(DeviceButton button) {
                 if (button == DeviceButton.ToggleVoice) { pendingGreen.Press(DateTime.UtcNow); talkDelay.Start(); }
+                else if (button == DeviceButton.EndVoiceCompatibility) {
+                    if (settings.p240ActiveTalkCompatibility && VoiceBusy) { AppPaths.Log("P240_ACTIVE_GREEN_STOP calibrated raw=3"); EndVoice(); }
+                }
                 else if (button == DeviceButton.StartVoice) Hint("开始听写请按 0＋绿键。"); else EndVoice();
             };
             reconnect = new Timer { Interval = 5000 };
