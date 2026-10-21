@@ -15,12 +15,12 @@ using Microsoft.Win32;
 [assembly: AssemblyCompany("Dialvia contributors")]
 [assembly: AssemblyProduct("Dialvia")]
 [assembly: AssemblyVersion("0.1.0.0")]
-[assembly: AssemblyFileVersion("0.1.0.7")]
-[assembly: AssemblyInformationalVersion("0.1.0-alpha.7")]
+[assembly: AssemblyFileVersion("0.1.0.8")]
+[assembly: AssemblyInformationalVersion("0.1.0-alpha.8")]
 
 namespace Dialvia {
     public static class Program {
-        public const string Version = "0.1.0-alpha.7";
+        public const string Version = "0.1.0-alpha.8";
         static Mutex instance;
         static Icon icon;
         static Bitmap brandImage;
@@ -40,7 +40,7 @@ namespace Dialvia {
                 using (var value = new Icon(stream, size, size)) return (Icon)value.Clone();
         }
         [STAThread] public static int Main(string[] args) {
-            try { return Run(args); }
+            try { DesktopShell.InitializeProcess(Array.IndexOf(args,"--preview-ui")>=0 || Array.IndexOf(args,"--render-preview")>=0); return Run(args); }
             catch (Exception ex) {
                 AppPaths.Log("FATAL " + ex.Message);
                 if (args.Length == 2 && (args[0] == "--render-preview" || args[0] == "--install-report")) { Directory.CreateDirectory(args[0] == "--render-preview" ? args[1] : Path.GetDirectoryName(Path.GetFullPath(args[1]))); File.WriteAllText(args[0] == "--render-preview" ? Path.Combine(args[1], "error.txt") : args[1], SettingsStore.Json.Serialize(new { error = ex.Message })); return 1; }
@@ -49,6 +49,7 @@ namespace Dialvia {
         }
         [MethodImpl(MethodImplOptions.NoInlining)] static int Run(string[] args) {
             if (args.Length > 0 && args[0] == "--notify") return Notifications.FromHook();
+            if (args.Length==2 && args[0]=="--shell-check") {AtomicFile.Write(Path.GetFullPath(args[1]),SettingsStore.Json.Serialize(DesktopShell.InspectInstalled()));return 0;}
             if (args.Length == 2 && args[0] == "--render-preview") { GuiPreview.Render(Path.GetFullPath(args[1])); return 0; }
             if (args.Length == 2 && args[0] == "--preview-ui") { GuiPreview.Interactive(args[1]); return 0; }
             if (args.Length == 2 && args[0] == "--inventory-check") {
@@ -136,13 +137,8 @@ namespace Dialvia {
             string installedInterop = Path.Combine(AppPaths.Data, "Interop.Plantronics.dll");
             if (!String.Equals(interop, installedInterop, StringComparison.OrdinalIgnoreCase)) File.Copy(interop, installedInterop, true);
             using (RegistryKey key = Registry.CurrentUser.CreateSubKey(RunKey)) key.SetValue("Dialvia", "\"" + destination + "\"");
-            string shortcutPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "Dialvia.lnk");
-            object shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell"));
-            object shortcut = shell.GetType().InvokeMember("CreateShortcut", BindingFlags.InvokeMethod, null, shell, new object[] {shortcutPath});
-            shortcut.GetType().InvokeMember("TargetPath", BindingFlags.SetProperty, null, shortcut, new object[] {destination});
-            shortcut.GetType().InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, shortcut, new object[] {AppPaths.Data});
-            shortcut.GetType().InvokeMember("Save", BindingFlags.InvokeMethod, null, shortcut, null);
-            Marshal.FinalReleaseComObject(shortcut); Marshal.FinalReleaseComObject(shell);
+            string shortcutPath=DesktopShell.ShortcutPath;
+            DesktopShell.ConfigureShortcut(shortcutPath,destination,AppPaths.Data,DesktopShell.EnsureIcon(AppPaths.Data));
             SHChangeNotify(0x00002000, 0x0005, destination, IntPtr.Zero);
             SHChangeNotify(0x00002000, 0x0005, shortcutPath, IntPtr.Zero);
         }

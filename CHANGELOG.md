@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-alpha.8 — 2026-10-21
+
+- Fix the remaining stale taskbar button: the running process and installed shortcut now share explicit `Dialvia.Desktop` identity. The shortcut explicitly references a separate, content-addressed two-tone ICO instead of relying on the cached EXE icon.
+- Open the control center when the Start-menu/taskbar shortcut relaunches; keep login startup in the background. Refresh only the owned shortcut/icon entries, with no Explorer restart or global cache deletion.
+- Add a read-only `--shell-check` report for process/shortcut identity, target, arguments and icon bytes. Independently verify the shortcut through the canonical Windows Shell property name.
+- Expand native icon checks to 9 renders by exercising the actual runtime AppIcon loader. The user confirmed the real bottom taskbar button is now ink/copper.
+
 ## 0.1.0-alpha.7 — 2026-10-21
 
 - Fix the icon resource mismatch introduced in alpha.6: the EXE/taskbar/title-bar mark was entirely copper while the in-app brand was ink/copper. Use the two-tone brand for shell and window resources, retaining transparency and enlarged geometry.

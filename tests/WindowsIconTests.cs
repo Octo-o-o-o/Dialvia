@@ -37,6 +37,8 @@ class WindowsIconTests {
                 using(var icon=Icon.FromHandle(small))records.Add(Render(small,icon.Width,"shell-small",output,Ink,Copper,Color.White));
             }finally{if(large!=IntPtr.Zero)DestroyIcon(large);if(small!=IntPtr.Zero)DestroyIcon(small);}
             Assembly assembly=Assembly.LoadFile(file);
+            using(var actual=(Icon)assembly.GetType("Dialvia.Program").GetProperty("AppIcon").GetValue(null))
+                records.Add(Render(actual.Handle,actual.Width,"runtime-app-icon",output,Ink,Copper,Color.White));
             foreach(int size in new[] {16,24,36,48})using(Stream stream=assembly.GetManifestResourceStream("Dialvia.AppIcon"))using(var icon=new Icon(stream,size,size))
                 records.Add(Render(icon.Handle,size,"window-"+size,output,Ink,Copper,Color.White));
             using(Stream stream=assembly.GetManifestResourceStream("Dialvia.TrayLightIcon"))using(var icon=new Icon(stream,24,24))
@@ -44,7 +46,7 @@ class WindowsIconTests {
             using(Stream stream=assembly.GetManifestResourceStream("Dialvia.TrayDarkIcon"))using(var icon=new Icon(stream,24,24))
                 records.Add(Render(icon.Handle,24,"tray-dark",output,ColorTranslator.FromHtml("#F7F5F0"),ColorTranslator.FromHtml("#D28B67"),ColorTranslator.FromHtml("#202020")));
             File.WriteAllText(Path.Combine(output,"result.json"),new JavaScriptSerializer().Serialize(new {passed=true,version=assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion,renders=records}));
-            Console.WriteLine("Validated 8 native Windows icon renders from EXE shell and embedded window/tray resources.");return 0;
+            Console.WriteLine("Validated "+records.Count+" native Windows icon renders from EXE shell, runtime loader and embedded window/tray resources.");return 0;
         }catch(Exception error){Console.Error.WriteLine(error.GetType().FullName+": "+error.Message);return 1;}
     }
 }

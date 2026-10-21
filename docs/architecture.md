@@ -17,6 +17,7 @@ P240 USB → Plantronics Hub COM → PlantronicsP240Adapter
 - `UserIntegration.cs`: additive voice-shortcut/hook configuration and read-only native sidebar binding resolution. Disabled or conflicting sidebar bindings are rejected. Voice-shortcut collisions fail before mutation. An ownership manifest retains user edits and unrelated hooks on removal. No hook-trust state is edited.
 - `TrayAppearance.cs`: taskbar DPI and read-only Windows system-theme selection, with separate ink/ivory transparent tray resources. The controller refreshes and disposes icons on display/preferences changes. The main GUI remains a System-DPI-aware paper theme.
 - `GuiPreview.cs`: isolated fictional settings/browser fixtures and a 13-state capture/audit report.
+- `DesktopShell.cs`: explicit process/shortcut app identity, content-addressed icon installation, owned shortcut metadata and read-only shell diagnostics. Preview processes use a separate app identity.
 - `Program.cs`: single-instance startup, native hook receiver, per-user installer, diagnostics. The generated COM interface assembly is a normal adjacent dependency.
 - `Models.cs`: configuration validation, atomic writes and paths.
 - `P240ButtonPolicy.cs`: calibrated idle raw-7 versus active-call raw-3 green-key routing. The latter is an optional compatibility stop; real volume-up sequences are protected, with an explicit setting for indistinguishable standalone holds.

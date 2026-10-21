@@ -13,7 +13,7 @@ The build uses the .NET type-library importer to generate `build/interop/Interop
 
 The binary is a Windows **WinExe** targeting .NET Framework, not a bundled native-AOT runtime. The output is an EXE, its generated managed interface DLL, documentation and install/remove launchers. Keep the EXE and DLL together. Executables are unsigned; no code-signing certificate or signature claim is fabricated.
 
-`Build-Brand.ps1` uses the same original vector paths for transparent SVG, PNG and 15 native 16–256 px ICO frames per role. It uses only Windows `System.Drawing`. `Test-Brand.ps1` checks 45 frames, transparency, bounds, source matching and contrast; the build and CI run it automatically. The full release build additionally runs `Test-WindowsIcons.ps1` against the compiled EXE, extracting shell icons and rendering 8 native shell/window/tray samples to catch palette/resource mismatches. See [visual design](visual-design.md).
+`Build-Brand.ps1` uses the same original vector paths for transparent SVG, PNG and 15 native 16–256 px ICO frames per role. It uses only Windows `System.Drawing`. `Test-Brand.ps1` checks 45 frames, transparency, bounds, source matching and contrast; the build and CI run it automatically. The full release build additionally runs `Test-WindowsIcons.ps1` against the compiled EXE, extracting shell icons and rendering 9 native shell/runtime/window/tray samples to catch palette/resource mismatches. See [visual design](visual-design.md).
 
 ```powershell
 .\scripts\Test-Brand.ps1
@@ -37,6 +37,8 @@ Diagnostics (do not control Codex):
 `--probe-device` registers a read-only SDK client and checks `047F:AE04`; it does not change the default softphone, send keys, record audio or dial a call. The installer rejects an inherited MSIX package identity to prevent the virtualized LocalAppData installation issue seen during development. Launch the release from Windows Explorer to install.
 
 GitHub Actions runs core tests and brand rebuild/validation without Hub. GUI checks run locally with the built Windows EXE. A full executable is built on a Windows machine with Hub; CI does not download vendor software from archive mirrors.
+
+`--shell-check <file>` reports installed process/shortcut identity, target, launch arguments and icon consistency without changing the shortcut. Run it from the installed EXE outside inherited MSIX identity, like installation itself. It writes local paths to the requested report; keep that report private.
 
 `--inventory-check` writes only a count after a read-only metadata query. `--render-preview` renders the app's own forms with fictional fixture data, without connecting hardware or changing user settings. `--install-report <file>` performs the same per-user install as `--install`, returning JSON instead of a completion dialog for managed installation workflows.
 

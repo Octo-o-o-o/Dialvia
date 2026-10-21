@@ -32,6 +32,7 @@ namespace Dialvia {
         }
         protected override void OnLoad(EventArgs e) {
             base.OnLoad(e);
+            AppPaths.Log("SHELL_APP_ID "+DesktopShell.ProcessAppId);
             try { settings = SettingsStore.Load(AppPaths.Config); }
             catch (Exception ex) { MessageBox.Show(ex.Message + "\n" + AppPaths.Config, "Dialvia 配置错误"); Close(); return; }
             tray = new NotifyIcon { Text = "Dialvia · Codex" };

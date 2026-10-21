@@ -1,4 +1,4 @@
-# Visual design and UI checks — alpha.7
+# Visual design and UI checks — alpha.8
 
 The tray artwork now fills the available icon area without an opaque background plate. The original D geometry is retained; its square SVG canvas is `209 190 620 620`. The visible vector height is 572/620 (92.3%), compared with 572/1000 (57.2%) previously. The D counter and surrounding area are transparent.
 
@@ -26,7 +26,17 @@ The tray chooses its native frame from the primary taskbar DPI, reads `SystemUse
 
 Alpha.6 accidentally generated `dialvia.ico` with copper for both vector paths, while the in-app header used ink/copper. The user's taskbar screenshot exposed the mismatch. Alpha.7 restores ink/copper for the EXE, default window icon and shortcuts. Geometry and transparency are unchanged.
 
-`Test-WindowsIcons.ps1` extracts the native shell icons from the built EXE and renders them with Windows `DrawIconEx`, along with four embedded window sizes and the two tray variants. All 8 renders must contain their expected primary/accent colors and retain clear corners. The old EXE failed with zero ink pixels in its shell icon; the corrected EXE passes. This checks the actual binary resources, not only source PNGs.
+`Test-WindowsIcons.ps1` extracts the native shell icons from the built EXE and renders them with Windows `DrawIconEx`, along with four embedded window sizes and the two tray variants. All 9 renders (including the actual runtime AppIcon loader) must contain their expected primary/accent colors and retain clear corners. The old EXE failed with zero ink pixels in its shell icon; the corrected EXE passes. This checks the actual binary resources, not only source PNGs.
+
+## Taskbar shortcut identity and cache
+
+The user reported that alpha.7 still showed an orange taskbar button even though the actual window/title icon and EXE resources were ink/copper. Native window inspection confirmed the running UI was alpha.7; changing resource files alone had not updated the taskbar entry.
+
+Alpha.8 sets process identity to `Dialvia.Desktop` before UI creation and writes the same `System.AppUserModel.ID` on the owned Start-menu shortcut. That shortcut explicitly references `icons/dialvia-<SHA256-of-icon>.ico,0`, generated from the embedded two-tone resource. A new icon content gets a new file path, avoiding reuse of the old EXE icon-cache key. The shortcut relaunches with `--settings`; login startup still has no arguments. Only the app's own icon/shortcut entries are refreshed; Explorer is not restarted and shared caches are not deleted.
+
+This follows Microsoft's [AppUserModelID guidance](https://learn.microsoft.com/en-us/windows/win32/shell/appids): use the same explicit ID for the process and its shortcut, whose icon supplies taskbar relaunch information. The [taskbar icon property reference](https://learn.microsoft.com/en-us/windows/win32/properties/props-system-appusermodel-relaunchiconresource) explains the group/shortcut icon separately from a window's ordinary icon.
+
+The installed `--shell-check` report passed: matching process/shortcut IDs, correct executable and arguments, explicit ICO path and bytes matching the embedded brand. The canonical Shell property `System.AppUserModel.ID` was independently checked. **The user confirmed on 2026-10-21 that the real bottom taskbar button now shows the ink/copper D.**
 
 ## UI inspection
 

@@ -5,7 +5,7 @@
 
 Turn a USB handset into a small Codex control surface: dial a number to open a chat, start voice dictation, and receive a task notification. **Plantronics Calisto P240 is the first and currently the only implemented device adapter.**
 
-> **0.1.0-alpha.7** — fixes the taskbar/title-bar icon mismatch: EXE and window icons now use the same ink/copper D as the app header. Eight native Windows renders verify the actual EXE resources, alongside 45 icon-frame and 13 UI-state checks. Previous handset acceptance and pending submission are unchanged. See [visual design](docs/visual-design.md) and [validation](docs/validation.md).
+> **0.1.0-alpha.8** — fixes the stale taskbar button after alpha.7: process and Start-menu shortcut now share an explicit app ID and the shortcut points to a separate content-addressed icon. The user confirmed the actual taskbar button now shows the ink/copper D. Nine native resource renders, 45 icon-frame and 13 UI-state checks pass. Previous handset acceptance and pending submission are unchanged. See [visual design](docs/visual-design.md) and [validation](docs/validation.md).
 
 ![Dialvia control center with fictional demo projects](assets/screenshots/projects.png)
 
@@ -19,7 +19,7 @@ The screenshot uses fictional demo data. Daily configuration is graphical; JSON 
 4. In **语音与通知**, select dictation or voice conversation. Configure voice shortcuts in **启动与集成**, then turn off detection mode in the overview or tray menu. If shortcuts have not loaded, restart Codex when other tasks are idle.
 5. In **启动与集成**, choose **安装并开启自启**, or run `Install.cmd`. Installation uses your Windows account without elevation. Configure a completion hook only after choosing a stable executable location, then review and trust it in Codex's Hooks UI.
 
-The app runs in the tray, including the hidden-icons area. Installation adds a Start menu shortcut and a login-startup entry. Existing Codex shortcuts are preserved; conflicting bindings stop setup with an explanation. The executable is **unsigned**.
+The app runs in the tray, including the hidden-icons area. Installation adds a Start menu shortcut and a login-startup entry. The shortcut and running app share a stable Windows app ID; its explicit icon file has a content-derived filename so an update does not reuse a stale EXE icon-cache key. Reinstall an older copy through the control center to update its shortcut metadata. Existing Codex shortcuts are preserved; conflicting bindings stop setup with an explanation. The executable is **unsigned**.
 
 ## Controls
 
@@ -102,7 +102,7 @@ cd Dialvia
 
 ```text
 dist/Dialvia-win-x64/Dialvia.exe
-dist/Dialvia-0.1.0-alpha.7-win-x64.zip
+dist/Dialvia-0.1.0-alpha.8-win-x64.zip
 dist/SHA256SUMS.txt
 ```
 
