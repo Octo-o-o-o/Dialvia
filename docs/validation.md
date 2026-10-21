@@ -1,4 +1,4 @@
-# Validation — 0.1.0-alpha.8
+# Validation — 0.1.0-alpha.9
 
 Evidence is split between the original controller on the development P240 and this extracted project. It is not a claim that every mode has passed.
 
@@ -18,6 +18,7 @@ Evidence is split between the original controller on the development P240 and th
 | Alpha.6 icon assets | 45 transparent native ICO frames and 3 SVGs passed source/dimension/alpha/bounds checks. Shell copper contrast is 4.23:1 on white and 3.85:1 on #202020. The primary D occupies about 92% of canvas height. Light/dark resource sheets and a native-24px artwork comparison were visually checked. |
 | Alpha.7 taskbar icon | User identified the all-copper shell/window icon mismatch in alpha.6. The old EXE reproduced the failure in native resource rendering (zero ink pixels). The corrected EXE passes 8 shell/window/tray render checks, 45 asset-frame checks and the 13-state UI audit. These resource tests do not capture the Windows taskbar itself. |
 | Alpha.8 actual taskbar acceptance | Native inspection confirmed the alpha.7 window was already two-tone, while the user still saw the stale taskbar button. Alpha.8 aligns the explicit process/shortcut app ID and assigns a content-addressed ICO to the shortcut. Installed metadata and independent canonical Shell-property checks passed. The user confirmed the actual bottom taskbar button is now ink/copper on 2026-10-21. Runtime resource tests now cover 9 renders. |
+| Alpha.9 optical sizing | Taskbar/EXE/shortcut artwork reduced from 92.3% to 80% height; compact tray/header assets are byte-for-byte unchanged from alpha.8. All 45 exported frames and 9 native resource renders pass role-specific bounds/palette checks; 13 fixture UI states pass. This is a visual sizing adjustment, not new handset acceptance. |
 | Per-user deployment | Installed outside inherited MSIX identity, verified the real LocalAppData executable and matching release hash, native HKCU Run value and live independent process (`IsProcessInJob=false`). Legacy private bindings were retained locally and its old startup entry removed. The control-center window and P240 connection were observed. |
 | Local recent index | The executable loaded the development machine's local inventory read-only; only the count was retained in diagnostic evidence. No private inventory is published. |
 | P240 central up/down | No usable report was observed from SDK events or a read-only shared HID/RawInput probe while Hub was active. Side volume changed the handset display. This is scoped to the tested setup; central keys are not mapped. |

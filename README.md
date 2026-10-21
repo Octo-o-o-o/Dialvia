@@ -5,7 +5,7 @@
 
 Turn a USB handset into a small Codex control surface: dial a number to open a chat, start voice dictation, and receive a task notification. **Plantronics Calisto P240 is the first and currently the only implemented device adapter.**
 
-> **0.1.0-alpha.8** — fixes the stale taskbar button after alpha.7: process and Start-menu shortcut now share an explicit app ID and the shortcut points to a separate content-addressed icon. The user confirmed the actual taskbar button now shows the ink/copper D. Nine native resource renders, 45 icon-frame and 13 UI-state checks pass. Previous handset acceptance and pending submission are unchanged. See [visual design](docs/visual-design.md) and [validation](docs/validation.md).
+> **0.1.0-alpha.9** — balances taskbar artwork at 80% canvas height while keeping compact tray/header artwork at 92%. Both remain transparent and ink/copper. Explicit taskbar identity and content-addressed icons from alpha.8 are retained. Nine native resource renders, 45 icon-frame and 13 UI-state checks pass. Previous handset acceptance and pending submission are unchanged. See [visual design](docs/visual-design.md) and [validation](docs/validation.md).
 
 ![Dialvia control center with fictional demo projects](assets/screenshots/projects.png)
 
@@ -102,7 +102,7 @@ cd Dialvia
 
 ```text
 dist/Dialvia-win-x64/Dialvia.exe
-dist/Dialvia-0.1.0-alpha.8-win-x64.zip
+dist/Dialvia-0.1.0-alpha.9-win-x64.zip
 dist/SHA256SUMS.txt
 ```
 

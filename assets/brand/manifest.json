@@ -1,8 +1,16 @@
 {
-  "schemaVersion": 1,
-  "viewBox": "209 190 620 620",
+  "schemaVersion": 2,
+  "viewBoxes": {
+    "shell": "161.5 142.5 715 715",
+    "tray": "209 190 620 620",
+    "brand": "209 190 620 620"
+  },
   "transparent": true,
-  "glyphHeightFraction": 0.9225806451612903,
+  "glyphHeightFractions": {
+    "shell": 0.8,
+    "tray": 0.9225806451612903,
+    "brand": 0.9225806451612903
+  },
   "sizes": [
     16,
     20,

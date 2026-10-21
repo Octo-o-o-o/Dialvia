@@ -36,7 +36,9 @@ class BrandTests {
                         Require(bitmap.GetPixel(width/2,width/2).A==0,"Transparent D counter; no plate");
                         int left=width,top=width,right=0,bottom=0,pixels=0;
                         for(int y=0;y<width;y++)for(int x=0;x<width;x++)if(bitmap.GetPixel(x,y).A>32){left=Math.Min(left,x);top=Math.Min(top,y);right=Math.Max(right,x);bottom=Math.Max(bottom,y);pixels++;}
-                        Require((bottom-top+1.0)/width>=0.88 && (right-left+1.0)/width>=0.8,"Mark occupies the native icon canvas");
+                        bool shell=name=="dialvia";double canvas=shell?715:620,expectedHeight=572/canvas;
+                        Require(Math.Abs((bottom-top+1.0)/width-expectedHeight)<=2.0/width+0.005,"Role-specific glyph height: "+name+" "+width);
+                        Require(Math.Abs((left+right+1.0)/2-width/2.0)<=1 && Math.Abs((top+bottom+1.0)/2-width/2.0)<=1,"Centered transparent canvas");
                         Require(pixels/(double)(width*width)<0.65,"No opaque background plate");
                         records.Add(new {asset=name,size=width,bounds=new[] {left,top,right-left+1,bottom-top+1},opaquePixels=pixels});
                     }
@@ -48,23 +50,25 @@ class BrandTests {
         }
         foreach(string file in new[] {"dialvia-icon.svg","dialvia-mark.svg","dialvia-mark-dark.svg"}) {
             var svg=XDocument.Load(Path.Combine(assets,file));
-            Require((string)svg.Root.Attribute("viewBox")=="209 190 620 620","Shared square vector canvas");
+            Require((string)svg.Root.Attribute("viewBox")== (file=="dialvia-icon.svg"?"161.5 142.5 715 715":"209 190 620 620"),"Role-specific square vector canvas");
             Require(svg.Descendants().Count(x=>x.Name.LocalName=="path")==2 && !svg.Descendants().Any(x=>x.Name.LocalName=="rect"||x.Name.LocalName=="image"),"Two original vector paths with no plate or raster");
         }
-        foreach(int size in Sizes.Concat(new[] {512})) Require(File.ReadAllBytes(Path.Combine(assets,"dialvia-"+size+".png")).SequenceEqual(File.ReadAllBytes(Path.Combine(assets,"dialvia-tray-light-"+size+".png"))),"Shell and in-app/light-tray brand artwork must match: "+size);
         var mark=XDocument.Load(Path.Combine(assets,"dialvia-icon.svg")).Descendants().Where(x=>x.Name.LocalName=="path").ToArray();
+        var brand=XDocument.Load(Path.Combine(assets,"dialvia-mark.svg")).Descendants().Where(x=>x.Name.LocalName=="path").ToArray();
+        Require(mark.Select(x=>x.ToString()).SequenceEqual(brand.Select(x=>x.ToString())),"Shell and compact artwork share geometry and palette");
+        Require(File.ReadAllBytes(Path.Combine(assets,"dialvia-mark-256.png")).SequenceEqual(File.ReadAllBytes(Path.Combine(assets,"dialvia-tray-light-256.png"))),"In-app compact brand alias");
         Require((string)mark[0].Attribute("fill")=="#202320" && (string)mark[1].Attribute("fill")=="#B76546","Two-tone shell SVG palette");
         double light=Contrast(ColorTranslator.FromHtml("#202320"),Color.White),dark=Contrast(ColorTranslator.FromHtml("#F7F5F0"),ColorTranslator.FromHtml("#202020"));
         Require(light>=3 && dark>=3,"Light/dark tray primary has 3:1 contrast on its matching background");
         Specimens(assets,Path.Combine(Path.GetDirectoryName(report),"icon-sizes.png"));
         if(args.Length>2 && File.Exists(args[2])) Comparison(assets,args[2],Path.Combine(Path.GetDirectoryName(report),"icon-before-after.png"));
-        string result=new JavaScriptSerializer().Serialize(new {passed=true,iconFrames=records.Count,svgFiles=3,sizes=Sizes,trayContrastLight=light,trayContrastDark=dark,shellMatchesBrand=true,frames=records});
+        string result=new JavaScriptSerializer().Serialize(new {passed=true,iconFrames=records.Count,svgFiles=3,sizes=Sizes,trayContrastLight=light,trayContrastDark=dark,shellPaletteMatchesBrand=true,shellGlyphHeight=0.8,trayGlyphHeight=572.0/620.0,frames=records});
         File.WriteAllText(report,result);Console.WriteLine("Validated 45 transparent native icon frames and 3 SVGs.");
     }
     static void Comparison(string assets,string baseline,string destination) {
         using(var sheet=new Bitmap(580,310))using(var g=Graphics.FromImage(sheet))using(var font=new Font("Segoe UI",12))
-        using(var old=ReadPngFrame(baseline,24))using(var current=new Bitmap(Path.Combine(assets,"dialvia-tray-light-24.png"))) {
-            g.Clear(ColorTranslator.FromHtml("#D9DDE5"));g.DrawString("Tray artwork / native 24 px + 4x zoom",font,Brushes.Black,20,14);
+        using(var old=ReadPngFrame(baseline,24))using(var current=new Bitmap(Path.Combine(assets,"dialvia-24.png"))) {
+            g.Clear(ColorTranslator.FromHtml("#D9DDE5"));g.DrawString("Taskbar artwork / native 24 px + 4x zoom",font,Brushes.Black,20,14);
             g.DrawString("Before",font,Brushes.Black,122,58);g.DrawString("After",font,Brushes.Black,393,58);
             g.DrawImageUnscaled(old,145,96);g.DrawImageUnscaled(current,410,96);
             g.InterpolationMode=InterpolationMode.NearestNeighbor;g.PixelOffsetMode=PixelOffsetMode.Half;

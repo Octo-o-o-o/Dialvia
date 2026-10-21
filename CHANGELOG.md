@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-alpha.9 — 2026-10-21
+
+- Separate icon sizing by role: taskbar/EXE/shortcut artwork uses 80% canvas height, while tray and in-app mark remain at 92.3%. Keep transparent backgrounds and the same original geometry/palette.
+- Give the asset manifest explicit per-role canvases and proportions. Validate occupied bounds, centering and the expected shell/tray proportions in both exported frames and native EXE renders.
+- Retain the alpha.8 explicit shell identity and content-addressed icon reference, so changed taskbar artwork receives a fresh icon path. Private mappings and login startup are preserved.
+- Refresh sizing samples, GUI fixture screenshots and documentation. The 80% shell proportion is an optical design choice, not a Windows-mandated percentage.
+
 ## 0.1.0-alpha.8 — 2026-10-21
 
 - Fix the remaining stale taskbar button: the running process and installed shortcut now share explicit `Dialvia.Desktop` identity. The shortcut explicitly references a separate, content-addressed two-tone ICO instead of relying on the cached EXE icon.

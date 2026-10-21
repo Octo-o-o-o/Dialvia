@@ -15,12 +15,12 @@ using Microsoft.Win32;
 [assembly: AssemblyCompany("Dialvia contributors")]
 [assembly: AssemblyProduct("Dialvia")]
 [assembly: AssemblyVersion("0.1.0.0")]
-[assembly: AssemblyFileVersion("0.1.0.8")]
-[assembly: AssemblyInformationalVersion("0.1.0-alpha.8")]
+[assembly: AssemblyFileVersion("0.1.0.9")]
+[assembly: AssemblyInformationalVersion("0.1.0-alpha.9")]
 
 namespace Dialvia {
     public static class Program {
-        public const string Version = "0.1.0-alpha.8";
+        public const string Version = "0.1.0-alpha.9";
         static Mutex instance;
         static Icon icon;
         static Bitmap brandImage;

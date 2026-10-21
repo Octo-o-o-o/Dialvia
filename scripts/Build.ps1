@@ -30,7 +30,7 @@ Copy-Item -LiteralPath (Join-Path $root 'config.example.json'),(Join-Path $root 
 Copy-Item -LiteralPath (Join-Path $root 'docs'),(Join-Path $root 'assets') -Destination $dist -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $root 'scripts\Install.cmd') -Destination (Join-Path $dist 'Install.cmd') -Force
 Copy-Item -LiteralPath (Join-Path $root 'scripts\Uninstall.cmd') -Destination (Join-Path $dist 'Uninstall.cmd') -Force
-$version='0.1.0-alpha.8'
+$version='0.1.0-alpha.9'
 $zip=Join-Path $root ('dist\Dialvia-'+$version+'-win-x64.zip')
 if(Test-Path -LiteralPath $zip){Remove-Item -LiteralPath $zip}
 Compress-Archive -LiteralPath $dist -DestinationPath $zip

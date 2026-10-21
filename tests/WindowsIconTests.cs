@@ -19,12 +19,14 @@ class WindowsIconTests {
                 graphics.Clear(background);IntPtr dc=graphics.GetHdc();
                 try {if(!DrawIconEx(dc,0,0,handle,size,size,0,IntPtr.Zero,3))throw new Exception("Native icon drawing failed: "+name);}finally{graphics.ReleaseHdc(dc);}
             }
-            int ink=0,copper=0;
-            for(int y=0;y<size;y++)for(int x=0;x<size;x++){Color pixel=bitmap.GetPixel(x,y);if(Near(pixel,primary))ink++;if(Near(pixel,accent))copper++;}
+            int ink=0,copper=0,top=size,bottom=-1;
+            for(int y=0;y<size;y++)for(int x=0;x<size;x++){Color pixel=bitmap.GetPixel(x,y);if(Near(pixel,primary))ink++;if(Near(pixel,accent))copper++;if(!Near(pixel,background)){top=Math.Min(top,y);bottom=Math.Max(bottom,y);}}
             bitmap.Save(Path.Combine(output,name+".png"),ImageFormat.Png);
             if(ink<size*size*0.15 || copper<size*size*0.04)throw new Exception("Missing two-tone brand palette in "+name+" (primary="+ink+", accent="+copper+")");
             if(!Near(bitmap.GetPixel(0,0),background))throw new Exception("Unexpected icon background in "+name);
-            return new {name=name,size=size,primaryPixels=ink,accentPixels=copper};
+            double expected=name.StartsWith("tray")?572.0/620.0:0.8;
+            if(Math.Abs((bottom-top+1.0)/size-expected)>2.0/size+0.005)throw new Exception("Wrong role-specific glyph size: "+name);
+            return new {name=name,size=size,primaryPixels=ink,accentPixels=copper,glyphHeight=bottom-top+1};
         }
     }
     static int Main(string[] args) {
