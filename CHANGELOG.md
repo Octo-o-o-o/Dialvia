@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-alpha.7 — 2026-10-21
+
+- Fix the icon resource mismatch introduced in alpha.6: the EXE/taskbar/title-bar mark was entirely copper while the in-app brand was ink/copper. Use the two-tone brand for shell and window resources, retaining transparency and enlarged geometry.
+- Validate shell exports against the in-app/light-tray palette at every size. Add 8 native Windows renders from actual EXE shell and embedded resources, run automatically by the release build. The alpha.6 EXE fails this regression check; alpha.7 passes.
+- Regenerate public screenshots and release materials; keep the light/dark notification-area variants and existing device controls.
+
 ## 0.1.0-alpha.6 — 2026-10-21
 
 - Remove the icon background plate and enlarge the original D artwork from 57% to 92% of canvas height. Provide separate shell, light-tray and dark-tray resources at 15 native ICO sizes, plus transparent SVG/PNG exports.

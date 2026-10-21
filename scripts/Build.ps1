@@ -25,11 +25,12 @@ $sources=@(Get-ChildItem -LiteralPath (Join-Path $root 'src\Dialvia') -Filter '*
 & $compiler /nologo /codepage:65001 /target:winexe /platform:x64 /optimize+ /utf8output /out:$exe /win32icon:$icon /win32manifest:$manifest /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.Web.Extensions.dll /reference:$interop /resource:"$icon,Dialvia.AppIcon" /resource:"$brand,Dialvia.BrandImage" /resource:"$trayLight,Dialvia.TrayLightIcon" /resource:"$trayDark,Dialvia.TrayDarkIcon" $sources
 if($LASTEXITCODE -ne 0){throw 'Application compilation failed.'}
 Copy-Item -LiteralPath $interop -Destination $dist -Force
+& (Join-Path $PSScriptRoot 'Test-WindowsIcons.ps1') -Executable $exe
 Copy-Item -LiteralPath (Join-Path $root 'config.example.json'),(Join-Path $root 'README.md'),(Join-Path $root 'README.zh-CN.md'),(Join-Path $root 'LICENSE'),(Join-Path $root 'THIRD-PARTY-NOTICES.md'),(Join-Path $root 'SECURITY.md'),(Join-Path $root 'CHANGELOG.md') -Destination $dist -Force
 Copy-Item -LiteralPath (Join-Path $root 'docs'),(Join-Path $root 'assets') -Destination $dist -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $root 'scripts\Install.cmd') -Destination (Join-Path $dist 'Install.cmd') -Force
 Copy-Item -LiteralPath (Join-Path $root 'scripts\Uninstall.cmd') -Destination (Join-Path $dist 'Uninstall.cmd') -Force
-$version='0.1.0-alpha.6'
+$version='0.1.0-alpha.7'
 $zip=Join-Path $root ('dist\Dialvia-'+$version+'-win-x64.zip')
 if(Test-Path -LiteralPath $zip){Remove-Item -LiteralPath $zip}
 Compress-Archive -LiteralPath $dist -DestinationPath $zip

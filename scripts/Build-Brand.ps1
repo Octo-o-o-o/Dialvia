@@ -58,9 +58,9 @@ function Write-IconSet([string]$name,[string]$primary,[string]$accent,[string]$s
     } finally {$writer.Dispose();$file.Dispose()}
     } finally {foreach($item in @($inkBrush,$copperBrush,$inkPath,$copperPath)){$item.Dispose()}}
 }
-# The shell mark uses copper on both light and dark surfaces. The tray has
-# separate ink/ivory variants; the large in-app mark retains ink and copper.
-Write-IconSet 'dialvia' '#B76546' '#B76546' 'dialvia-icon.svg'
+# Shell/title/taskbar and the in-app mark share the same ink/copper brand.
+# Only the notification-area icon has a separate dark-background variant.
+Write-IconSet 'dialvia' '#202320' '#B76546' 'dialvia-icon.svg'
 Write-IconSet 'dialvia-tray-light' '#202320' '#B76546' 'dialvia-mark.svg'
 Write-IconSet 'dialvia-tray-dark' '#F7F5F0' '#D28B67' 'dialvia-mark-dark.svg'
 Copy-Item -LiteralPath (Join-Path $assets 'dialvia-tray-light-256.png') -Destination (Join-Path $assets 'dialvia-mark-256.png') -Force

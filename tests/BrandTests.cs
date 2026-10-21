@@ -51,11 +51,14 @@ class BrandTests {
             Require((string)svg.Root.Attribute("viewBox")=="209 190 620 620","Shared square vector canvas");
             Require(svg.Descendants().Count(x=>x.Name.LocalName=="path")==2 && !svg.Descendants().Any(x=>x.Name.LocalName=="rect"||x.Name.LocalName=="image"),"Two original vector paths with no plate or raster");
         }
-        double light=Contrast(ColorTranslator.FromHtml("#B76546"),Color.White),dark=Contrast(ColorTranslator.FromHtml("#B76546"),ColorTranslator.FromHtml("#202020"));
-        Require(light>=3 && dark>=3,"Shell primary has 3:1 non-text contrast on light and dark");
+        foreach(int size in Sizes.Concat(new[] {512})) Require(File.ReadAllBytes(Path.Combine(assets,"dialvia-"+size+".png")).SequenceEqual(File.ReadAllBytes(Path.Combine(assets,"dialvia-tray-light-"+size+".png"))),"Shell and in-app/light-tray brand artwork must match: "+size);
+        var mark=XDocument.Load(Path.Combine(assets,"dialvia-icon.svg")).Descendants().Where(x=>x.Name.LocalName=="path").ToArray();
+        Require((string)mark[0].Attribute("fill")=="#202320" && (string)mark[1].Attribute("fill")=="#B76546","Two-tone shell SVG palette");
+        double light=Contrast(ColorTranslator.FromHtml("#202320"),Color.White),dark=Contrast(ColorTranslator.FromHtml("#F7F5F0"),ColorTranslator.FromHtml("#202020"));
+        Require(light>=3 && dark>=3,"Light/dark tray primary has 3:1 contrast on its matching background");
         Specimens(assets,Path.Combine(Path.GetDirectoryName(report),"icon-sizes.png"));
         if(args.Length>2 && File.Exists(args[2])) Comparison(assets,args[2],Path.Combine(Path.GetDirectoryName(report),"icon-before-after.png"));
-        string result=new JavaScriptSerializer().Serialize(new {passed=true,iconFrames=records.Count,svgFiles=3,sizes=Sizes,shellContrastLight=light,shellContrastDark=dark,frames=records});
+        string result=new JavaScriptSerializer().Serialize(new {passed=true,iconFrames=records.Count,svgFiles=3,sizes=Sizes,trayContrastLight=light,trayContrastDark=dark,shellMatchesBrand=true,frames=records});
         File.WriteAllText(report,result);Console.WriteLine("Validated 45 transparent native icon frames and 3 SVGs.");
     }
     static void Comparison(string assets,string baseline,string destination) {

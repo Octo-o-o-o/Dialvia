@@ -1,4 +1,4 @@
-# Visual design and UI checks — alpha.6
+# Visual design and UI checks — alpha.7
 
 The tray artwork now fills the available icon area without an opaque background plate. The original D geometry is retained; its square SVG canvas is `209 190 620 620`. The visible vector height is 572/620 (92.3%), compared with 572/1000 (57.2%) previously. The D counter and surrounding area are transparent.
 
@@ -10,7 +10,7 @@ This is a comparison of exported artwork on a sample background, not a capture o
 
 | Role | Source | Appearance |
 |---|---|---|
-| EXE, shortcut, taskbar/title bar | `dialvia.ico`, `dialvia-icon.svg` | Copper D; transparent background, legible on light/dark surfaces |
+| EXE, shortcut, taskbar/title bar | `dialvia.ico`, `dialvia-icon.svg` | Ink D with copper accent; identical palette to the in-app mark, transparent background |
 | Light taskbar tray | `dialvia-tray-light.ico` | Ink D with copper accent |
 | Dark taskbar tray | `dialvia-tray-dark.ico` | Ivory D with lighter copper accent |
 | In-app header | `dialvia-mark.svg`, `dialvia-mark-256.png` | Ink/copper on the paper UI |
@@ -18,9 +18,15 @@ This is a comparison of exported artwork on a sample background, not a capture o
 
 Each ICO contains 32-bit native frames at **16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96, 128, 256** pixels; PNG exports include those sizes and 512. The manifest records role, canvas and size names. SVGs have an accessible title. Never flatten these icons onto a rounded square or add padding when regenerating assets.
 
-The tray chooses its native frame from the primary taskbar DPI, reads `SystemUsesLightTheme` without changing Windows settings, and refreshes on preference/display changes. Shell artwork uses #B76546 with measured contrast 4.23:1 against white and 3.85:1 against #202020. This checks the primary non-text shape, not every antialiased edge or every possible wallpaper. Installation issues a targeted shell item update for its own EXE/shortcut; it does not restart Explorer or clear global caches.
+The tray chooses its native frame from the primary taskbar DPI, reads `SystemUsesLightTheme` without changing Windows settings, and refreshes on preference/display changes. The shell and main window use the standard ink/copper brand. Notification-area primary contrast is checked separately for its light and dark variants against matching sample backgrounds; this does not claim visibility of the static shell icon on every possible surface. Installation issues a targeted shell item update for its own EXE/shortcut; it does not restart Explorer or clear global caches.
 
 ![Transparent native-size samples on light and dark backgrounds](../assets/screenshots/icon-sizes.png)
+
+## Taskbar mismatch regression
+
+Alpha.6 accidentally generated `dialvia.ico` with copper for both vector paths, while the in-app header used ink/copper. The user's taskbar screenshot exposed the mismatch. Alpha.7 restores ink/copper for the EXE, default window icon and shortcuts. Geometry and transparency are unchanged.
+
+`Test-WindowsIcons.ps1` extracts the native shell icons from the built EXE and renders them with Windows `DrawIconEx`, along with four embedded window sizes and the two tray variants. All 8 renders must contain their expected primary/accent colors and retain clear corners. The old EXE failed with zero ink pixels in its shell icon; the corrected EXE passes. This checks the actual binary resources, not only source PNGs.
 
 ## UI inspection
 
@@ -32,7 +38,7 @@ The tray chooses its native frame from the primary taskbar DPI, reads `SystemUse
 | Session browser | Recent, empty and index-error states; no-action buttons disabled when empty; wrapping footer; dropdown keyboard handling |
 | Packaging | Matching version labels, embedded shell/light-tray/dark-tray/brand resources, regenerated public screenshots and install materials |
 
-`Test-Brand.ps1` validates 45 ICO frames and 3 SVGs, including pixel dimensions, PNG source matching, transparent corners/counter, no plate, occupied bounds and primary shell contrast. Native Windows frame selection is checked through 128 px; the 256 px PNG data is checked directly because .NET Framework may select a smaller frame for a 256 px Icon request. Runtime tray requests are at most 64 px.
+`Test-Brand.ps1` validates 45 ICO frames and 3 SVGs, including pixel dimensions, PNG source matching, transparent corners/counter, no plate, occupied bounds and matching-background tray contrast. Shell PNGs must match the in-app/light-tray brand at every native size, and the shell SVG must retain both ink and copper. Native Windows frame selection is checked through 128 px; the 256 px PNG data is checked directly because .NET Framework may select a smaller frame for a 256 px Icon request. Runtime tray requests are at most 64 px.
 
 `Test-UI.ps1` captures 13 states with fictional data and records dimensions, actual graphics DPI, missing input names and horizontal flow overflow. This local pass used 144 graphics DPI (Windows 150%). Native fixture interaction also checked the four settings pages, invalid save, cancel/Esc, dropdown Esc, dirty/save state and Ctrl+S. Automated layout checks are deliberately narrow; visual inspection supplies the rest. Neither fixture mode touches personal settings or hardware.
 

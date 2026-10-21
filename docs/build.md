@@ -13,10 +13,11 @@ The build uses the .NET type-library importer to generate `build/interop/Interop
 
 The binary is a Windows **WinExe** targeting .NET Framework, not a bundled native-AOT runtime. The output is an EXE, its generated managed interface DLL, documentation and install/remove launchers. Keep the EXE and DLL together. Executables are unsigned; no code-signing certificate or signature claim is fabricated.
 
-`Build-Brand.ps1` uses the same original vector paths for transparent SVG, PNG and 15 native 16–256 px ICO frames per role. It uses only Windows `System.Drawing`. `Test-Brand.ps1` checks 45 frames, transparency, bounds, source matching and contrast; the build and CI run it automatically. See [visual design](visual-design.md).
+`Build-Brand.ps1` uses the same original vector paths for transparent SVG, PNG and 15 native 16–256 px ICO frames per role. It uses only Windows `System.Drawing`. `Test-Brand.ps1` checks 45 frames, transparency, bounds, source matching and contrast; the build and CI run it automatically. The full release build additionally runs `Test-WindowsIcons.ps1` against the compiled EXE, extracting shell icons and rendering 8 native shell/window/tray samples to catch palette/resource mismatches. See [visual design](visual-design.md).
 
 ```powershell
 .\scripts\Test-Brand.ps1
+.\scripts\Test-WindowsIcons.ps1 # Checks resources from the built EXE
 .\scripts\Test-UI.ps1   # Requires the built EXE; fixture data only
 .\dist\Dialvia-win-x64\Dialvia.exe --preview-ui settings
 .\dist\Dialvia-win-x64\Dialvia.exe --preview-ui sessions
